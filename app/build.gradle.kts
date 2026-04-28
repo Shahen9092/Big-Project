@@ -11,7 +11,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core-jvm:2.3.12")
     implementation("io.ktor:ktor-server-netty-jvm:2.3.12")
     implementation("io.ktor:ktor-server-sessions-jvm:2.3.12")
-    implementation("io.ktor:ktor-server-pebble-jvm:2.3.12")
+
 
     
 
