@@ -1,0 +1,68 @@
+﻿name,category,default_unit,notes
+Bench Press,Chest,kg,Chest press
+Incline Dumbbell Press,Chest,kg,Upper chest press
+Decline Bench Press,Chest,kg,Lower chest press
+Chest Fly,Chest,kg,Chest isolation
+Cable Fly,Chest,kg,Cable chest movement
+Push Ups,Chest,reps,Bodyweight chest exercise
+Dips,Chest,reps,Chest and tricep exercise
+Pull Ups,Back,reps,Bodyweight back exercise
+Lat Pulldown,Back,kg,Lat machine exercise
+Barbell Row,Back,kg,Back rowing movement
+Seated Cable Row,Back,kg,Cable rowing exercise
+Deadlift,Back,kg,Compound pulling movement
+T-Bar Row,Back,kg,Back strength exercise
+Face Pulls,Back,kg,Upper back movement
+Squat,Legs,kg,Lower body compound
+Leg Press,Legs,kg,Machine leg press
+Romanian Deadlift,Legs,kg,Hamstring focused lift
+Lunges,Legs,reps,Single leg exercise
+Leg Extension,Legs,kg,Quad isolation
+Leg Curl,Legs,kg,Hamstring isolation
+Calf Raises,Legs,reps,Calf exercise
+Bulgarian Split Squat,Legs,reps,Single leg strength
+Shoulder Press,Shoulders,kg,Main shoulder press
+Lateral Raises,Shoulders,kg,Side delt isolation
+Front Raises,Shoulders,kg,Front delt exercise
+Rear Delt Fly,Shoulders,kg,Rear delt isolation
+Arnold Press,Shoulders,kg,Dumbbell shoulder press
+Shrugs,Shoulders,kg,Trap exercise
+Barbell Curl,Biceps,kg,Bicep curl
+Dumbbell Curl,Biceps,kg,Dumbbell curl
+Hammer Curl,Biceps,kg,Neutral grip curl
+Preacher Curl,Biceps,kg,Bicep isolation
+Cable Curl,Biceps,kg,Cable curl
+Tricep Pushdown,Triceps,kg,Cable tricep exercise
+Overhead Tricep Extension,Triceps,kg,Overhead tricep movement
+Skull Crushers,Triceps,kg,Lying tricep extension
+Close Grip Bench Press,Triceps,kg,Compound tricep press
+Bench Dips,Triceps,reps,Bodyweight tricep exercise
+Plank,Core,seconds,Static core hold
+Sit Ups,Core,reps,Core exercise
+Crunches,Core,reps,Abdominal movement
+Russian Twists,Core,reps,Rotational core exercise
+Leg Raises,Core,reps,Lower abs exercise
+Hanging Leg Raises,Core,reps,Advanced core exercise
+Mountain Climbers,Core,reps,Dynamic core movement
+Running,Cardio,km,Running activity
+Walking,Cardio,km,Walking activity
+Cycling,Cardio,km,Cycling activity
+Swimming,Cardio,lengths,Swimming activity
+Rowing,Cardio,minutes,Rowing machine
+Skipping,Cardio,minutes,Skipping exercise
+Stairmaster,Cardio,minutes,Machine cardio
+Elliptical,Cardio,minutes,Low impact cardio
+Burpees,Full Body,reps,Full body movement
+Clean and Press,Full Body,kg,Compound lift
+Thrusters,Full Body,kg,Squat to press
+Kettlebell Swings,Full Body,reps,Hip driven movement
+Battle Ropes,Full Body,seconds,Conditioning exercise
+Football,Sports,minutes,Team sport
+Basketball,Sports,minutes,Team sport
+Tennis,Sports,minutes,Racket sport
+Boxing,Sports,minutes,Combat training
+Martial Arts,Sports,minutes,Combat training
+Stretching,Recovery,minutes,Flexibility work
+Yoga,Recovery,minutes,Recovery exercise
+Foam Rolling,Recovery,minutes,Muscle recovery
+Mobility Work,Recovery,minutes,Joint mobility
