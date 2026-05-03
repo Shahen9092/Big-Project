@@ -102,7 +102,7 @@ class GymCalendar {
 
         println("\n--- fitness calendar record ---")
         history.reversed().forEachIndexed { index, session ->
-            val status = if (session.checkOutTime == null) "🔴 doing exercise" else "🟢 finished"
+            val status = if (session.checkOutTime == null) " doing exercise" else " finished"
             val durationStr = if (session.checkOutTime != null) {
                 val start = LocalDateTime.parse(session.checkInTime, formatter)
                 val end = LocalDateTime.parse(session.checkOutTime, formatter)
@@ -124,7 +124,7 @@ fun main() {
     val gym = GymCalendar()
     val scanner = java.util.Scanner(System.`in`)
 
-    println("Welcome to use Kotlin Gym calendar system (CS Sophomore Edition)")
+    println("Welcome to use Kotlin Gym calendar system")
 
     while (true) {
         println("\n Please select the operation:")
