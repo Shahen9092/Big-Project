@@ -120,21 +120,25 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
 
                     </div>
 
-                    <div class="info-grid">
+ <div class="info-grid">
 
-                        <div class="mini-card">
-                            <h3>Last Activity</h3>
-                            <p>${stats.lastActivity}</p>
-                        </div>
+    <div class="mini-card">
+        <h3>Last Activity</h3>
+        <p>${stats.lastActivity}</p>
+    </div>
 
-                        <div class="mini-card">
-                            <h3>Personal Records</h3>
-                            $recordHtml
-                        </div>
+    <div class="mini-card">
+        <h3>Personal Records</h3>
+        $recordHtml
+    </div>
 
-                    </div>
+    <div class="mini-card">
+        <h3>Personal Trainer</h3>
+        <p>Get workout suggestions</p>
+        <a class="btn" href="/trainer">Open Trainer</a>
+    </div>
 
-                </div>
+</div>
             </main>
         </body>
         </html>
