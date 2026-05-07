@@ -32,7 +32,7 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Dashboard</title>
             ${pageCss()}

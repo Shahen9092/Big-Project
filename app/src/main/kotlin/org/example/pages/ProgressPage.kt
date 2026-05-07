@@ -26,7 +26,7 @@ fun renderProgressPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Progress</title>
             ${pageCss()}

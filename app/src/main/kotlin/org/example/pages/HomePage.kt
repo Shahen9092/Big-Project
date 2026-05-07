@@ -3,7 +3,7 @@ package org.example.pages
 fun renderHomePage(): String {
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Fitness Tracker</title>
             ${pageCss()}

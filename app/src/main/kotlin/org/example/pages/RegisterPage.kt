@@ -2,14 +2,16 @@ package org.example.pages
 
 fun renderRegisterPage(error: String? = null): String {
     var errorHtml = ""
+    var errorDescription = ""
 
     if (error != null) {
-        errorHtml = "<p class='error'>$error</p>"
+        errorHtml = "<p id='register-error' class='error' role='alert'>${escapeRegisterHtml(error)}</p>"
+        errorDescription = "aria-describedby=\"register-error\""
     }
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Register</title>
             ${pageCss()}
@@ -24,7 +26,7 @@ fun renderRegisterPage(error: String? = null): String {
 
                     <div class="nav">
                         <div>
-                            <a href="/">← Back</a>
+                            <a href="/" aria-label="Go back to home page">← Back</a>
                         </div>
                     </div>
 
@@ -33,29 +35,69 @@ fun renderRegisterPage(error: String? = null): String {
                     $errorHtml
 
                     <form method="post" action="/register">
-                        <label>First Name</label><br>
-                        <input type="text" name="name" required>
+                        <label for="first-name">First Name</label><br>
+                        <input 
+                            id="first-name"
+                            type="text" 
+                            name="name"
+                            placeholder="Enter your first name"
+                            autocomplete="given-name"
+                            $errorDescription
+                            required
+                        >
 
                         <br><br>
 
-                        <label>Surname</label><br>
-                        <input type="text" name="surname" required>
+                        <label for="surname">Surname</label><br>
+                        <input 
+                            id="surname"
+                            type="text" 
+                            name="surname"
+                            placeholder="Enter your surname"
+                            autocomplete="family-name"
+                            $errorDescription
+                            required
+                        >
 
                         <br><br>
 
-                        <label>Username</label><br>
-                        <input type="text" name="username" required>
-
-                        <br>
-
-                        <label>Email</label><br>
-                        <input type="email" name="email" required>
+                        <label for="username">Username</label><br>
+                        <input 
+                            id="username"
+                            type="text" 
+                            name="username"
+                            placeholder="Choose a username"
+                            autocomplete="username"
+                            $errorDescription
+                            required
+                        >
 
                         <br><br>
 
-                        <label>Password</label><br>
-                        <input type="password" name="password" required>
-                        <p class="muted">Use at least 8 characters, one capital letter and one number.</p>
+                        <label for="email">Email</label><br>
+                        <input 
+                            id="email"
+                            type="email" 
+                            name="email"
+                            placeholder="Enter your email address"
+                            autocomplete="email"
+                            $errorDescription
+                            required
+                        >
+
+                        <br><br>
+
+                        <label for="password">Password</label><br>
+                        <input 
+                            id="password"
+                            type="password" 
+                            name="password"
+                            placeholder="Create a password"
+                            autocomplete="new-password"
+                            aria-describedby="password-help${if (error != null) " register-error" else ""}"
+                            required
+                        >
+                        <p id="password-help" class="muted">Use at least 8 characters, one capital letter and one number.</p>
 
                         <br>
 
@@ -72,4 +114,13 @@ fun renderRegisterPage(error: String? = null): String {
         </body>
         </html>
     """.trimIndent()
+}
+
+fun escapeRegisterHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#x27;")
 }

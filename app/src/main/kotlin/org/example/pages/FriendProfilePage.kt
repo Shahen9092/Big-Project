@@ -62,7 +62,7 @@ fun renderFriendProfilePage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>$fullName</title>
             ${pageCss()}

@@ -18,7 +18,7 @@ fun calendarPage(selectedDay: String? = null): String {
 
     return """
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
         <title>Calendar</title>
         <style>

@@ -52,7 +52,7 @@ val savedMessage = if (saved == "true") {
 }
     return """
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>Personal Trainer</title>
     ${pageCss()}

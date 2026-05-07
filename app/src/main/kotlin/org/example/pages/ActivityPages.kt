@@ -20,16 +20,20 @@ fun renderExerciseSearchPage(
     search: String
 ): String {
 
+    val safeSearch = escapeActivityHtml(search)
+
     var categoryOptions = "<option value=''>All Categories</option>"
 
     for (category in categories) {
+        val safeCategory = escapeActivityHtml(category)
+
         var selectedText = ""
 
         if (category == selectedCategory) {
             selectedText = "selected"
         }
 
-        categoryOptions += "<option value='$category' $selectedText>$category</option>"
+        categoryOptions += "<option value='$safeCategory' $selectedText>$safeCategory</option>"
     }
 
     var exercisesText = ""
@@ -44,9 +48,9 @@ fun renderExerciseSearchPage(
     } else {
         for (exercise in exercises) {
             val id = exercise[ExercisesTable.id]
-            val name = exercise[ExercisesTable.name]
-            val category = exercise[ExercisesTable.category]
-            val unit = exercise[ExercisesTable.defaultUnit]
+            val name = escapeActivityHtml(exercise[ExercisesTable.name])
+            val category = escapeActivityHtml(exercise[ExercisesTable.category])
+            val unit = escapeActivityHtml(exercise[ExercisesTable.defaultUnit])
 
             exercisesText += """
                 <div class="exercise-card">
@@ -59,7 +63,7 @@ fun renderExerciseSearchPage(
                         <span class="unit-tag">$unit</span>
                     </div>
 
-                    <a class="btn choose-btn" href="/activities/new/$id">Choose Exercise</a>
+                    <a class="btn choose-btn" href="/activities/new/$id" aria-label="Choose $name exercise">Choose Exercise</a>
                 </div>
             """
         }
@@ -73,7 +77,7 @@ fun renderExerciseSearchPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Choose Exercise</title>
             ${pageCss()}
@@ -88,11 +92,11 @@ fun renderExerciseSearchPage(
 
                     <div class="nav">
                         <div>
-                            <a href="/dashboard">← Back to Dashboard</a>
+                            <a href="/dashboard" aria-label="Back to dashboard">← Back to Dashboard</a>
                         </div>
 
                         <div>
-                            <a class="btn-light" href="/logout">Logout</a>
+                            <a class="btn-light" href="/logout" aria-label="Log out of your account">Logout</a>
                         </div>
                     </div>
 
@@ -110,36 +114,37 @@ fun renderExerciseSearchPage(
                                 <p class="muted">Search by exercise name, category or related notes.</p>
                             </div>
 
-                            <p class="results-count">$resultText</p>
+                            <p class="results-count" aria-live="polite">$resultText</p>
                         </div>
 
                         <div class="activity-search-grid">
 
                             <div>
-                                <label>Search</label><br>
+                                <label for="exercise-search">Search</label><br>
 
                                 <div class="input-with-icon">
-                                    <span>⌕</span>
+                                    <span aria-hidden="true">⌕</span>
                                     <input
+                                        id="exercise-search"
                                         type="text"
                                         name="q"
-                                        value="$search"
+                                        value="$safeSearch"
                                         placeholder="Bench press, running, chest..."
                                     >
                                 </div>
                             </div>
 
                             <div>
-                                <label>Category</label><br>
+                                <label for="exercise-category">Category</label><br>
 
-                                <select name="category" class="category-select">
+                                <select id="exercise-category" name="category" class="category-select">
                                     $categoryOptions
                                 </select>
                             </div>
 
                             <div class="filter-buttons">
                                 <button type="submit">Search</button>
-                                <a class="btn-light clear-filter" href="/activities/new">Clear</a>
+                                <a class="btn-light clear-filter" href="/activities/new" aria-label="Clear exercise search filters">Clear</a>
                             </div>
 
                         </div>
@@ -166,13 +171,13 @@ fun renderLogExercisePage(
     var errorText = ""
 
     if (error != null) {
-        errorText = "<p class='error'>$error</p>"
+        errorText = "<p class='error' role='alert'>${escapeActivityHtml(error)}</p>"
     }
 
     val id = exercise[ExercisesTable.id]
-    val name = exercise[ExercisesTable.name]
-    val category = exercise[ExercisesTable.category]
-    val unit = exercise[ExercisesTable.defaultUnit]
+    val name = escapeActivityHtml(exercise[ExercisesTable.name])
+    val category = escapeActivityHtml(exercise[ExercisesTable.category])
+    val unit = escapeActivityHtml(exercise[ExercisesTable.defaultUnit])
 
     var backLink = "/activities/new"
     var backText = "Back to Exercises"
@@ -186,7 +191,7 @@ fun renderLogExercisePage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Log $name</title>
             ${pageCss()}
@@ -201,11 +206,11 @@ fun renderLogExercisePage(
 
                     <div class="nav">
                         <div>
-                            <a href="$backLink">← $backText</a>
+                            <a href="$backLink" aria-label="$backText">← $backText</a>
                         </div>
 
                         <div>
-                            <a class="btn-light" href="/logout">Logout</a>
+                            <a class="btn-light" href="/logout" aria-label="Log out of your account">Logout</a>
                         </div>
                     </div>
 
@@ -219,8 +224,8 @@ fun renderLogExercisePage(
                     <form method="post" action="/activities/new/$id">
                         $hiddenTemplateInput
 
-                        <label>Date</label><br>
-                        <input type="date" name="date" value="$today" required>
+                        <label for="activity-date">Date</label><br>
+                        <input id="activity-date" type="date" name="date" value="$today" required>
 
                         <br><br>
 
@@ -228,9 +233,9 @@ fun renderLogExercisePage(
 
                         <div id="setsArea">
                             <div class="set-row">
-                                <label>Set 1</label><br>
+                                <label for="amount-1">Set 1</label><br>
                                 <div class="amount-line">
-                                    <input type="number" step="0.1" name="amount" required>
+                                    <input id="amount-1" type="number" step="0.1" name="amount" required>
                                     <span>$unit</span>
                                 </div>
                             </div>
@@ -240,8 +245,8 @@ fun renderLogExercisePage(
 
                         <br><br>
 
-                        <label>Notes</label><br>
-                        <input type="text" name="notes" placeholder="Optional notes">
+                        <label for="activity-notes">Notes</label><br>
+                        <input id="activity-notes" type="text" name="notes" placeholder="Optional notes">
 
                         <br><br>
 
@@ -263,9 +268,9 @@ fun renderLogExercisePage(
                     row.className = "set-row";
 
                     row.innerHTML =
-                        "<label>Set " + setNumber + "</label><br>" +
+                        "<label for='amount-" + setNumber + "'>Set " + setNumber + "</label><br>" +
                         "<div class='amount-line'>" +
-                        "<input type='number' step='0.1' name='amount' required>" +
+                        "<input id='amount-" + setNumber + "' type='number' step='0.1' name='amount' required>" +
                         "<span>$unit</span>" +
                         "</div>";
 
@@ -292,8 +297,14 @@ fun renderEditActivityPage(
     var errorText = ""
 
     if (error != null) {
-        errorText = "<p class='error'>$error</p>"
+        errorText = "<p class='error' role='alert'>${escapeActivityHtml(error)}</p>"
     }
+
+    val safeExerciseName = escapeActivityHtml(exerciseName)
+    val safeCategory = escapeActivityHtml(category)
+    val safeUnit = escapeActivityHtml(unit)
+    val safeDate = escapeActivityHtml(date)
+    val notesText = escapeActivityHtml(notes ?: "")
 
     var setsText = ""
     var setNumber = 1
@@ -301,10 +312,10 @@ fun renderEditActivityPage(
     for (amount in sets) {
         setsText += """
             <div class="set-row">
-                <label>Set $setNumber</label><br>
+                <label for="edit-amount-$setNumber">Set $setNumber</label><br>
                 <div class="amount-line">
-                    <input type="number" step="0.1" name="amount" value="$amount" required>
-                    <span>$unit</span>
+                    <input id="edit-amount-$setNumber" type="number" step="0.1" name="amount" value="$amount" required>
+                    <span>$safeUnit</span>
                 </div>
             </div>
         """
@@ -315,16 +326,14 @@ fun renderEditActivityPage(
     if (setsText == "") {
         setsText = """
             <div class="set-row">
-                <label>Set 1</label><br>
+                <label for="edit-amount-1">Set 1</label><br>
                 <div class="amount-line">
-                    <input type="number" step="0.1" name="amount" required>
-                    <span>$unit</span>
+                    <input id="edit-amount-1" type="number" step="0.1" name="amount" required>
+                    <span>$safeUnit</span>
                 </div>
             </div>
         """
     }
-
-    val notesText = notes ?: ""
 
     val currentSetNumber = if (sets.isEmpty()) {
         1
@@ -334,7 +343,7 @@ fun renderEditActivityPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Edit Activity</title>
             ${pageCss()}
@@ -349,20 +358,20 @@ fun renderEditActivityPage(
 
                     <div class="nav">
                         <div>
-                            <a href="/activities">← Back to My Activities</a>
+                            <a href="/activities" aria-label="Back to my activities">← Back to My Activities</a>
                         </div>
 
                         <div>
-                            <a class="btn-light" href="/logout">Logout</a>
+                            <a class="btn-light" href="/logout" aria-label="Log out of your account">Logout</a>
                         </div>
                     </div>
 
                     <h1>Edit Activity</h1>
 
                     <div class="mini-card">
-                        <h3>$exerciseName</h3>
-                        <p class="muted">$category</p>
-                        <p><span class="unit-tag">$unit</span></p>
+                        <h3>$safeExerciseName</h3>
+                        <p class="muted">$safeCategory</p>
+                        <p><span class="unit-tag">$safeUnit</span></p>
                     </div>
 
                     <br>
@@ -371,8 +380,8 @@ fun renderEditActivityPage(
 
                     <form method="post" action="/activities/edit/$activityId">
 
-                        <label>Date</label><br>
-                        <input type="date" name="date" value="$date" required>
+                        <label for="edit-date">Date</label><br>
+                        <input id="edit-date" type="date" name="date" value="$safeDate" required>
 
                         <br><br>
 
@@ -386,8 +395,8 @@ fun renderEditActivityPage(
 
                         <br><br>
 
-                        <label>Notes</label><br>
-                        <input type="text" name="notes" value="$notesText" placeholder="Optional notes">
+                        <label for="edit-notes">Notes</label><br>
+                        <input id="edit-notes" type="text" name="notes" value="$notesText" placeholder="Optional notes">
 
                         <br><br>
 
@@ -395,7 +404,7 @@ fun renderEditActivityPage(
                     </form>
 
                     <form method="post" action="/activities/delete/$activityId" onsubmit="return confirm('Are you sure you want to delete this activity?');">
-                        <button class="btn-danger" type="submit">Delete Activity</button>
+                        <button class="btn-danger" type="submit" aria-label="Delete this activity">Delete Activity</button>
                     </form>
 
                 </div>
@@ -413,10 +422,10 @@ fun renderEditActivityPage(
                     row.className = "set-row";
 
                     row.innerHTML =
-                        "<label>Set " + setNumber + "</label><br>" +
+                        "<label for='edit-amount-" + setNumber + "'>Set " + setNumber + "</label><br>" +
                         "<div class='amount-line'>" +
-                        "<input type='number' step='0.1' name='amount' required>" +
-                        "<span>$unit</span>" +
+                        "<input id='edit-amount-" + setNumber + "' type='number' step='0.1' name='amount' required>" +
+                        "<span>$safeUnit</span>" +
                         "</div>";
 
                     area.appendChild(row);
@@ -439,15 +448,15 @@ fun renderActivitiesPage(
     var messageText = ""
 
     if (message == "saved") {
-        messageText = "<p class='success'>Activity saved successfully.</p>"
+        messageText = "<p class='success' role='status'>Activity saved successfully.</p>"
     }
 
     if (message == "updated") {
-        messageText = "<p class='success'>Activity updated successfully.</p>"
+        messageText = "<p class='success' role='status'>Activity updated successfully.</p>"
     }
 
     if (message == "deleted") {
-        messageText = "<p class='success'>Activity deleted successfully.</p>"
+        messageText = "<p class='success' role='status'>Activity deleted successfully.</p>"
     }
 
     var activitiesText = ""
@@ -487,27 +496,30 @@ fun renderActivitiesPage(
                         }
                     }
 
-                    bestText = "Best: ${formatAmount(bestAmount)} ${activity.unit}"
+                    bestText = "Best: ${formatAmount(bestAmount)} ${escapeActivityHtml(activity.unit)}"
                 }
 
                 var notesText = ""
 
                 if (activity.notes != null && activity.notes != "") {
-                    notesText = "<p class='muted small-note'>${activity.notes}</p>"
+                    notesText = "<p class='muted small-note'>${escapeActivityHtml(activity.notes)}</p>"
                 }
+
+                val safeExerciseName = escapeActivityHtml(activity.exerciseName)
+                val safeCategory = escapeActivityHtml(activity.category)
 
                 dayText += """
                     <div class="calendar-entry">
-                        <p><strong>• ${activity.exerciseName}</strong> - $setText</p>
-                        <p class="muted">${activity.category}</p>
+                        <p><strong>• $safeExerciseName</strong> - $setText</p>
+                        <p class="muted">$safeCategory</p>
                         <p class="muted">$bestText</p>
                         $notesText
 
                         <div class="tiny-actions">
-                            <a class="btn btn-small" href="/activities/edit/${activity.activityId}">Edit</a>
+                            <a class="btn btn-small" href="/activities/edit/${activity.activityId}" aria-label="Edit $safeExerciseName activity">Edit</a>
 
                             <form method="post" action="/activities/delete/${activity.activityId}" onsubmit="return confirm('Are you sure you want to delete this activity?');">
-                                <button class="btn-danger btn-small" type="submit">Delete</button>
+                                <button class="btn-danger btn-small" type="submit" aria-label="Delete $safeExerciseName activity">Delete</button>
                             </form>
                         </div>
                     </div>
@@ -525,7 +537,7 @@ fun renderActivitiesPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>My Activities</title>
             ${pageCss()}
@@ -540,11 +552,11 @@ fun renderActivitiesPage(
 
                     <div class="nav">
                         <div>
-                            <a href="/dashboard">← Back to Dashboard</a>
+                            <a href="/dashboard" aria-label="Back to dashboard">← Back to Dashboard</a>
                         </div>
 
                         <div>
-                            <a class="btn-light" href="/logout">Logout</a>
+                            <a class="btn-light" href="/logout" aria-label="Log out of your account">Logout</a>
                         </div>
                     </div>
 
@@ -557,12 +569,12 @@ fun renderActivitiesPage(
                     $messageText
 
                     <p>
-                        <a class="btn" href="/activities/new">Log New Activity</a>
+                        <a class="btn" href="/activities/new" aria-label="Log a new activity">Log New Activity</a>
                     </p>
 
                     <div class="month-switcher">
                         <div class="month-arrow-left">
-                            <a class="btn-light month-arrow" href="/activities?month=$previousMonth">←</a>
+                            <a class="btn-light month-arrow" href="/activities?month=$previousMonth" aria-label="View previous month">←</a>
                         </div>
 
                         <div class="month-title-centre">
@@ -570,7 +582,7 @@ fun renderActivitiesPage(
                         </div>
 
                         <div class="month-arrow-right">
-                            <a class="btn-light month-arrow" href="/activities?month=$nextMonth">→</a>
+                            <a class="btn-light month-arrow" href="/activities?month=$nextMonth" aria-label="View next month">→</a>
                         </div>
                     </div>
 
@@ -655,4 +667,13 @@ fun formatDate(date: String): String {
     }
 
     return "$day $monthName $year"
+}
+
+fun escapeActivityHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#x27;")
 }

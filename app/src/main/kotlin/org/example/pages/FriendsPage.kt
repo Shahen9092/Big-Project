@@ -140,7 +140,7 @@ fun renderFriendsPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Friends</title>
             ${pageCss()}

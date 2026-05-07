@@ -85,7 +85,7 @@ fun renderTemplatesPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Workout Templates</title>
             ${pageCss()}

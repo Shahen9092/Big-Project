@@ -2,14 +2,16 @@ package org.example.pages
 
 fun renderLoginPage(error: String? = null): String {
     var errorHtml = ""
+    var errorDescription = ""
 
     if (error != null) {
-        errorHtml = "<p class='error'>$error</p>"
+        errorHtml = "<p id='login-error' class='error' role='alert'>${escapeLoginHtml(error)}</p>"
+        errorDescription = "aria-describedby=\"login-error\""
     }
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Login</title>
             ${pageCss()}
@@ -24,7 +26,7 @@ fun renderLoginPage(error: String? = null): String {
 
                     <div class="nav">
                         <div>
-                            <a href="/">← Back</a>
+                            <a href="/" aria-label="Go back to home page">← Back</a>
                         </div>
                     </div>
 
@@ -33,13 +35,29 @@ fun renderLoginPage(error: String? = null): String {
                     $errorHtml
 
                     <form method="post" action="/login">
-                        <label>Username</label><br>
-                        <input type="text" name="username" required>
+                        <label for="username">Username</label><br>
+                        <input 
+                            id="username"
+                            type="text" 
+                            name="username"
+                            placeholder="Enter your username"
+                            autocomplete="username"
+                            $errorDescription
+                            required
+                        >
 
                         <br><br>
 
-                        <label>Password</label><br>
-                        <input type="password" name="password" required>
+                        <label for="password">Password</label><br>
+                        <input 
+                            id="password"
+                            type="password" 
+                            name="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            $errorDescription
+                            required
+                        >
 
                         <br><br>
 
@@ -56,4 +74,13 @@ fun renderLoginPage(error: String? = null): String {
         </body>
         </html>
     """.trimIndent()
+}
+
+fun escapeLoginHtml(text: String): String {
+    return text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#x27;")
 }

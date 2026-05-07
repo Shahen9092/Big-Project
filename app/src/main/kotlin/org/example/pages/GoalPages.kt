@@ -84,7 +84,7 @@ fun renderGoalsPage(
 
     return """
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <title>Goals</title>
             ${pageCss()}
