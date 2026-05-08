@@ -21,21 +21,15 @@ fun renderGoalsPage(
 
     if (message == "created") {
         messageHtml = "<p class='success'>Goal created.</p>"
-    }
-
-    if (message == "deleted") {
+    } else if (message == "deleted") {
         messageHtml = "<p class='success'>Goal deleted.</p>"
     }
 
     if (error == "title") {
         messageHtml = "<p class='error'>Please enter a goal title.</p>"
-    }
-
-    if (error == "target") {
+    } else if (error == "target") {
         messageHtml = "<p class='error'>Please enter a valid target above 0.</p>"
-    }
-
-    if (error == "exercise") {
+    } else if (error == "exercise") {
         messageHtml = "<p class='error'>Please choose an exercise for this goal type.</p>"
     }
 
@@ -58,14 +52,18 @@ fun renderGoalsPage(
         """.trimIndent()
     } else {
         for (goal in goals) {
+
+            val currentAmountText = formatAmount(goal.currentAmount)
+            val targetAmountText = formatAmount(goal.targetAmount)
+
             goalsHtml += """
                 <div class="mini-card">
                     <h3>${goal.title}</h3>
                     <p class="muted">${goal.typeLabel}</p>
 
                     <p>
-                        <strong>${formatAmount(goal.currentAmount)}</strong> / 
-                        <strong>${formatAmount(goal.targetAmount)} ${goal.unit}</strong>
+                        <strong>$currentAmountText</strong> / 
+                        <strong>$targetAmountText ${goal.unit}</strong>
                     </p>
 
                     <div style="background:#dce9dd; border-radius:999px; overflow:hidden; height:18px; margin-bottom:10px;">

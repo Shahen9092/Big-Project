@@ -28,37 +28,23 @@ fun renderFriendsPage(
 
     if (message == "sent") {
         messageHtml = "<p class='success'>Friend request sent.</p>"
-    }
-
-    if (message == "accepted") {
+    } else if (message == "accepted") {
         messageHtml = "<p class='success'>Friend request accepted.</p>"
-    }
-
-    if (message == "declined") {
+    } else if (message == "declined") {
         messageHtml = "<p class='success'>Friend request declined.</p>"
-    }
-
-    if (message == "cancelled") {
+    } else if (message == "cancelled") {
         messageHtml = "<p class='success'>Friend request cancelled.</p>"
-    }
-
-    if (message == "removed") {
+    } else if (message == "removed") {
         messageHtml = "<p class='success'>Friend removed.</p>"
     }
 
     if (error == "empty") {
         messageHtml = "<p class='error'>Please enter a username or email.</p>"
-    }
-
-    if (error == "notfound") {
+    } else if (error == "notfound") {
         messageHtml = "<p class='error'>No user found with that username or email.</p>"
-    }
-
-    if (error == "self") {
+    } else if (error == "self") {
         messageHtml = "<p class='error'>You cannot add yourself as a friend.</p>"
-    }
-
-    if (error == "exists") {
+    } else if (error == "exists") {
         messageHtml = "<p class='error'>A friend request or friendship already exists with this user.</p>"
     }
 
@@ -68,6 +54,7 @@ fun renderFriendsPage(
         friendsHtml = "<p class='muted'>You have no friends added yet.</p>"
     } else {
         for (friend in friends) {
+
             friendsHtml += """
                 <div class="friend-row">
                     <div>
@@ -94,6 +81,7 @@ fun renderFriendsPage(
         incomingHtml = "<p class='muted'>No incoming requests.</p>"
     } else {
         for (request in incomingRequests) {
+
             incomingHtml += """
                 <div class="friend-row">
                     <div>
@@ -122,6 +110,7 @@ fun renderFriendsPage(
         outgoingHtml = "<p class='muted'>No sent requests.</p>"
     } else {
         for (request in outgoingRequests) {
+
             outgoingHtml += """
                 <div class="friend-row">
                     <div>

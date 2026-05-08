@@ -1,12 +1,15 @@
 package org.example.pages
 
 fun renderRegisterPage(error: String? = null): String {
+
     var errorHtml = ""
     var errorDescription = ""
+    var passwordDescription = "aria-describedby=\"password-help\""
 
     if (error != null) {
-        errorHtml = "<p id='register-error' class='error' role='alert'>${escapeRegisterHtml(error)}</p>"
+        errorHtml = "<p id='register-error' class='error' role='alert'>$error</p>"
         errorDescription = "aria-describedby=\"register-error\""
+        passwordDescription = "aria-describedby=\"password-help register-error\""
     }
 
     return """
@@ -94,10 +97,13 @@ fun renderRegisterPage(error: String? = null): String {
                             name="password"
                             placeholder="Create a password"
                             autocomplete="new-password"
-                            aria-describedby="password-help${if (error != null) " register-error" else ""}"
+                            $passwordDescription
                             required
                         >
-                        <p id="password-help" class="muted">Use at least 8 characters, one capital letter and one number.</p>
+
+                        <p id="password-help" class="muted">
+                            Use at least 8 characters, one capital letter and one number.
+                        </p>
 
                         <br>
 
@@ -114,13 +120,4 @@ fun renderRegisterPage(error: String? = null): String {
         </body>
         </html>
     """.trimIndent()
-}
-
-fun escapeRegisterHtml(text: String): String {
-    return text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#x27;")
 }

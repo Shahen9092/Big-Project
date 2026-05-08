@@ -79,6 +79,7 @@ fun renderProgressPage(
 }
 
 private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint>): String {
+
     if (selectedExercise == "") {
         return """
             <div class="mini-card">
@@ -115,10 +116,12 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
         }
     }
 
-    val stepX = if (points.size == 1) {
-        0.0
+    var stepX = 0.0
+
+    if (points.size == 1) {
+        stepX = 0.0
     } else {
-        graphWidth.toDouble() / (points.size - 1)
+        stepX = graphWidth.toDouble() / (points.size - 1)
     }
 
     var polylinePoints = ""
@@ -133,7 +136,10 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
         val yRatio = point.value / maxValue
         val y = topPadding + graphHeight - (yRatio * graphHeight)
 
-        polylinePoints += "${x},${y} "
+        val formattedValue = formatAmount(point.value)
+        val displayDate = shortDate(point.date)
+
+        polylinePoints += "$x,$y "
 
         circlesHtml += """
             <circle cx="$x" cy="$y" r="5" fill="#2e7d32"></circle>
@@ -141,13 +147,13 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
 
         circlesHtml += """
             <text x="$x" y="${y - 10}" text-anchor="middle" font-size="12" fill="#1b5e20">
-                ${formatAmount(point.value)}
+                $formattedValue
             </text>
         """.trimIndent()
 
         xLabelsHtml += """
             <text x="$x" y="${height - 18}" text-anchor="middle" font-size="12" fill="#5e7560">
-                ${shortDate(point.date)}
+                $displayDate
             </text>
         """.trimIndent()
     }
@@ -158,11 +164,12 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
     for (i in 0..steps) {
         val value = (maxValue / steps) * (steps - i)
         val y = topPadding + (graphHeight.toDouble() / steps) * i
+        val formattedValue = formatAmount(value)
 
         yAxisLabels += """
             <line x1="$leftPadding" y1="$y" x2="${width - rightPadding}" y2="$y" stroke="#d9e7da" stroke-width="1"></line>
             <text x="${leftPadding - 10}" y="${y + 4}" text-anchor="end" font-size="12" fill="#5e7560">
-                ${formatAmount(value)}
+                $formattedValue
             </text>
         """.trimIndent()
     }
@@ -170,10 +177,12 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
     var pointRows = ""
 
     for (point in points) {
+        val formattedValue = formatAmount(point.value)
+
         pointRows += """
             <tr>
                 <td>${point.date}</td>
-                <td>${formatAmount(point.value)}</td>
+                <td>$formattedValue</td>
             </tr>
         """
     }
@@ -219,30 +228,42 @@ private fun renderLineGraph(selectedExercise: String, points: List<ProgressPoint
 }
 
 private fun shortDate(date: String): String {
+
     val parts = date.split("-")
 
     if (parts.size != 3) {
         return date
     }
 
-    val year = parts[0]
     val month = parts[1]
     val day = parts[2]
 
-    val monthName = when (month) {
-        "01" -> "Jan"
-        "02" -> "Feb"
-        "03" -> "Mar"
-        "04" -> "Apr"
-        "05" -> "May"
-        "06" -> "Jun"
-        "07" -> "Jul"
-        "08" -> "Aug"
-        "09" -> "Sep"
-        "10" -> "Oct"
-        "11" -> "Nov"
-        "12" -> "Dec"
-        else -> month
+    var monthName = month
+
+    if (month == "01") {
+        monthName = "Jan"
+    } else if (month == "02") {
+        monthName = "Feb"
+    } else if (month == "03") {
+        monthName = "Mar"
+    } else if (month == "04") {
+        monthName = "Apr"
+    } else if (month == "05") {
+        monthName = "May"
+    } else if (month == "06") {
+        monthName = "Jun"
+    } else if (month == "07") {
+        monthName = "Jul"
+    } else if (month == "08") {
+        monthName = "Aug"
+    } else if (month == "09") {
+        monthName = "Sep"
+    } else if (month == "10") {
+        monthName = "Oct"
+    } else if (month == "11") {
+        monthName = "Nov"
+    } else if (month == "12") {
+        monthName = "Dec"
     }
 
     return "$day $monthName"

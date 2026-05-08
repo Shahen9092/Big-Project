@@ -1,11 +1,12 @@
 package org.example.pages
 
 fun renderLoginPage(error: String? = null): String {
+
     var errorHtml = ""
     var errorDescription = ""
 
     if (error != null) {
-        errorHtml = "<p id='login-error' class='error' role='alert'>${escapeLoginHtml(error)}</p>"
+        errorHtml = "<p id='login-error' class='error' role='alert'>$error</p>"
         errorDescription = "aria-describedby=\"login-error\""
     }
 
@@ -74,13 +75,4 @@ fun renderLoginPage(error: String? = null): String {
         </body>
         </html>
     """.trimIndent()
-}
-
-fun escapeLoginHtml(text: String): String {
-    return text
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#x27;")
 }
