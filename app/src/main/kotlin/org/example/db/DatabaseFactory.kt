@@ -1,17 +1,39 @@
-package org.example.db.tables
+package org.example.db
 
-import org.jetbrains.exposed.sql.Table
+import org.example.db.tables.ActivitiesTable
+import org.example.db.tables.ActivitySetsTable
+import org.example.db.tables.ExercisesTable
+import org.example.db.tables.FriendshipsTable
+import org.example.db.tables.GoalsTable
+import org.example.db.tables.TemplateSharesTable
+import org.example.db.tables.UsersTable
+import org.example.db.tables.WorkoutTemplateExercisesTable
+import org.example.db.tables.WorkoutTemplatesTable
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 
-object TemplateSharesTable : Table("template_shares") {
-    val id = integer("id").autoIncrement()
+object DatabaseFactory {
 
-    val senderId = integer("sender_id")
+    fun init() {
 
-    val receiverId = integer("receiver_id")
+        Database.connect(
+            url = "jdbc:sqlite:fitness.db",
+            driver = "org.sqlite.JDBC"
+        )
 
-    val templateId = integer("template_id")
-
-    val status = varchar("status", 20)
-
-    override val primaryKey = PrimaryKey(id)
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(
+                UsersTable,
+                ExercisesTable,
+                ActivitiesTable,
+                ActivitySetsTable,
+                FriendshipsTable,
+                WorkoutTemplatesTable,
+                WorkoutTemplateExercisesTable,
+                GoalsTable,
+                TemplateSharesTable
+            )
+        }
+    }
 }
