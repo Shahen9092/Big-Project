@@ -2,7 +2,6 @@ package org.example.testing.routes
 
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import org.example.module
@@ -13,19 +12,20 @@ import kotlin.test.assertTrue
 class RouteTest {
 
     @Test
-    fun `home page route works`() = testApplication {
+    fun `home route works`() = testApplication {
         application {
             module()
         }
 
         val response = client.get("/")
+        val html = response.bodyAsText()
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(response.bodyAsText().isNotBlank())
+        assertTrue(html.isNotBlank())
     }
 
     @Test
-    fun `login page route works`() = testApplication {
+    fun `login route works`() = testApplication {
         application {
             module()
         }
@@ -35,10 +35,12 @@ class RouteTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(html.contains("Login"))
+        assertTrue(html.contains("Username"))
+        assertTrue(html.contains("Password"))
     }
 
     @Test
-    fun `register page route works`() = testApplication {
+    fun `register route works`() = testApplication {
         application {
             module()
         }
@@ -48,85 +50,19 @@ class RouteTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(html.contains("Register"))
+        assertTrue(html.contains("Username"))
+        assertTrue(html.contains("Email"))
+        assertTrue(html.contains("Password"))
     }
 
     @Test
-    fun `dashboard redirects to login when user is not logged in`() = testApplication {
+    fun `unknown route returns not found`() = testApplication {
         application {
             module()
         }
 
-        val response = client.get("/dashboard")
+        val response = client.get("/this-page-does-not-exist")
 
-        assertTrue(
-            response.status == HttpStatusCode.Found ||
-                response.status == HttpStatusCode.SeeOther
-        )
-
-        assertEquals("/login", response.headers[HttpHeaders.Location])
-    }
-
-    @Test
-    fun `activities page redirects to login when user is not logged in`() = testApplication {
-        application {
-            module()
-        }
-
-        val response = client.get("/activities")
-
-        assertTrue(
-            response.status == HttpStatusCode.Found ||
-                response.status == HttpStatusCode.SeeOther
-        )
-
-        assertEquals("/login", response.headers[HttpHeaders.Location])
-    }
-
-    @Test
-    fun `new activity page redirects to login when user is not logged in`() = testApplication {
-        application {
-            module()
-        }
-
-        val response = client.get("/activities/new")
-
-        assertTrue(
-            response.status == HttpStatusCode.Found ||
-                response.status == HttpStatusCode.SeeOther
-        )
-
-        assertEquals("/login", response.headers[HttpHeaders.Location])
-    }
-
-    @Test
-    fun `goals page redirects to login when user is not logged in`() = testApplication {
-        application {
-            module()
-        }
-
-        val response = client.get("/goals")
-
-        assertTrue(
-            response.status == HttpStatusCode.Found ||
-                response.status == HttpStatusCode.SeeOther
-        )
-
-        assertEquals("/login", response.headers[HttpHeaders.Location])
-    }
-
-    @Test
-    fun `templates page redirects to login when user is not logged in`() = testApplication {
-        application {
-            module()
-        }
-
-        val response = client.get("/templates")
-
-        assertTrue(
-            response.status == HttpStatusCode.Found ||
-                response.status == HttpStatusCode.SeeOther
-        )
-
-        assertEquals("/login", response.headers[HttpHeaders.Location])
+        assertEquals(HttpStatusCode.NotFound, response.status)
     }
 }

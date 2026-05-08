@@ -22,13 +22,18 @@ object ExerciseSeeder {
         val inputStream = ExerciseSeeder::class.java
             .classLoader
             .getResourceAsStream("exercises.csv")
-            ?: return
+
+        if (inputStream == null) {
+            return
+        }
 
         val reader = BufferedReader(InputStreamReader(inputStream))
 
         reader.readLine()
 
-        reader.forEachLine { line ->
+        var line = reader.readLine()
+
+        while (line != null) {
 
             val parts = line.split(",")
 
@@ -48,6 +53,8 @@ object ExerciseSeeder {
                     }
                 }
             }
+
+            line = reader.readLine()
         }
     }
 }
