@@ -31,7 +31,9 @@ fun renderFriendProfilePage(
         recordsHtml = "<ul class='record-list'>"
 
         for (record in stats.personalRecords) {
-            recordsHtml += "<li>${record.exerciseName}: ${formatAmount(record.amount)} ${record.unit}</li>"
+            val formattedAmount = formatAmount(record.amount)
+
+            recordsHtml += "<li>${record.exerciseName}: $formattedAmount ${record.unit}</li>"
         }
 
         recordsHtml += "</ul>"
@@ -43,18 +45,23 @@ fun renderFriendProfilePage(
         recentHtml = "<p class='muted'>No activities logged yet.</p>"
     } else {
         for (activity in stats.recentActivities) {
-            val setText = if (activity.setCount == 1) {
-                "1 set"
+
+            var setText = ""
+
+            if (activity.setCount == 1) {
+                setText = "1 set"
             } else {
-                "${activity.setCount} sets"
+                setText = "${activity.setCount} sets"
             }
+
+            val formattedBestAmount = formatAmount(activity.bestAmount)
 
             recentHtml += """
                 <div class="calendar-entry">
                     <p><strong>${activity.exerciseName}</strong> - $setText</p>
                     <p class="muted">${activity.category}</p>
                     <p class="muted">${activity.date}</p>
-                    <p class="muted">Best: ${formatAmount(activity.bestAmount)} ${activity.unit}</p>
+                    <p class="muted">Best: $formattedBestAmount ${activity.unit}</p>
                 </div>
             """
         }

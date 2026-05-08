@@ -24,7 +24,9 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
         recordHtml = "<ul class='record-list'>"
 
         for (record in stats.personalRecords) {
-            recordHtml += "<li>${record.exerciseName}: ${formatAmount(record.amount)} ${record.unit}</li>"
+            val formattedAmount = formatAmount(record.amount)
+
+            recordHtml += "<li>${record.exerciseName}: $formattedAmount ${record.unit}</li>"
         }
 
         recordHtml += "</ul>"
@@ -120,25 +122,27 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
 
                     </div>
 
- <div class="info-grid">
+                    <div class="info-grid">
 
-    <div class="mini-card">
-        <h3>Last Activity</h3>
-        <p>${stats.lastActivity}</p>
-    </div>
+                        <div class="mini-card">
+                            <h3>Last Activity</h3>
+                            <p>${stats.lastActivity}</p>
+                        </div>
 
-    <div class="mini-card">
-        <h3>Personal Records</h3>
-        $recordHtml
-    </div>
+                        <div class="mini-card">
+                            <h3>Personal Records</h3>
+                            $recordHtml
+                        </div>
 
-    <div class="mini-card">
-        <h3>Personal Trainer</h3>
-        <p>Get workout suggestions</p>
-        <a class="btn" href="/trainer">Open Trainer</a>
-    </div>
+                        <div class="mini-card">
+                            <h3>Personal Trainer</h3>
+                            <p>Get workout suggestions</p>
+                            <a class="btn" href="/trainer">Open Trainer</a>
+                        </div>
 
-</div>
+                    </div>
+
+                </div>
             </main>
         </body>
         </html>
@@ -146,9 +150,14 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
 }
 
 fun formatAmount(amount: Double): String {
-    return if (amount % 1.0 == 0.0) {
-        amount.toInt().toString()
+
+    var result = ""
+
+    if (amount % 1.0 == 0.0) {
+        result = amount.toInt().toString()
     } else {
-        amount.toString()
+        result = amount.toString()
     }
+
+    return result
 }

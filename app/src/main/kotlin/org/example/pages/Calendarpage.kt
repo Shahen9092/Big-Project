@@ -11,7 +11,7 @@ fun calendarPage(selectedDay: String? = null): String {
     }
 
     val message = if (selectedDay != null) {
-        "<p style='color:#2e7d32; font-weight:bold;'>📅 You selected Day $selectedDay. Stay consistent! 💪</p>"
+        "<p style='color:#2e7d32; font-weight:bold;'>You selected Day $selectedDay. Stay consistent! 💪</p>"
     } else {
         "<p>Select a day to view activity.</p>"
     }
@@ -69,7 +69,7 @@ fun calendarPage(selectedDay: String? = null): String {
     </head>
     <body>
         <div class="container">
-            <h1>📅 Workout Calendar</h1>
+            <h1>Workout Calendar</h1>
 
             $message
 
