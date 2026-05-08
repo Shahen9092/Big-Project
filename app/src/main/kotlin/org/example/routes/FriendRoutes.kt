@@ -10,14 +10,19 @@ import org.example.db.tables.ActivitiesTable
 import org.example.db.tables.ActivitySetsTable
 import org.example.db.tables.ExercisesTable
 import org.example.db.tables.FriendshipsTable
+import org.example.db.tables.TemplateSharesTable
 import org.example.db.tables.UsersTable
+import org.example.db.tables.WorkoutTemplateExercisesTable
+import org.example.db.tables.WorkoutTemplatesTable
 import org.example.models.UserSession
 import org.example.pages.FriendDisplay
 import org.example.pages.FriendProfileStats
 import org.example.pages.FriendRecentActivity
 import org.example.pages.FriendRequestDisplay
-
+import org.example.pages.FriendTemplateChoice
 import org.example.pages.PersonalRecord
+import org.example.pages.ReceivedTemplateShareDisplay
+import org.example.pages.SentTemplateShareDisplay
 import org.example.pages.renderFriendProfilePage
 import org.example.pages.renderFriendsPage
 import org.jetbrains.exposed.sql.SortOrder
@@ -50,6 +55,9 @@ fun Route.friendRoutes() {
                 friends = pageData.friends,
                 incomingRequests = pageData.incomingRequests,
                 outgoingRequests = pageData.outgoingRequests,
+                myTemplates = pageData.myTemplates,
+                receivedTemplates = pageData.receivedTemplates,
+                sentTemplates = pageData.sentTemplates,
                 message = message,
                 error = error
             ),
@@ -315,12 +323,249 @@ fun Route.friendRoutes() {
 
         call.respondRedirect("/friends?msg=removed")
     }
+
+    post("/friends/templates/send") {
+        val session = call.sessions.get<UserSession>()
+
+        if (session == null) {
+            call.respondRedirect("/login")
+            return@post
+        }
+
+        val params = call.receiveParameters()
+
+        val friendUserId = params["friendUserId"]?.toIntOrNull()
+        val templateId = params["templateId"]?.toIntOrNull()
+
+        if (friendUserId == null || templateId == null) {
+            call.respondRedirect("/friends?error=template_data")
+            return@post
+        }
+
+        val result = transaction {
+            val friendship = FriendshipsTable
+                .selectAll()
+                .where {
+                    (FriendshipsTable.status eq "accepted") and
+                            (
+                                    ((FriendshipsTable.requesterId eq session.userId) and
+                                            (FriendshipsTable.addresseeId eq friendUserId)) or
+                                            ((FriendshipsTable.requesterId eq friendUserId) and
+                                                    (FriendshipsTable.addresseeId eq session.userId))
+                                    )
+                }
+                .singleOrNull()
+
+            if (friendship == null) {
+                "notfriend"
+            } else {
+                val template = WorkoutTemplatesTable
+                    .selectAll()
+                    .where { WorkoutTemplatesTable.id eq templateId }
+                    .singleOrNull()
+
+                if (template == null || template[WorkoutTemplatesTable.userId] != session.userId) {
+                    "template_notfound"
+                } else {
+                    val oldShare = TemplateSharesTable
+                        .selectAll()
+                        .where {
+                            (TemplateSharesTable.senderId eq session.userId) and
+                                    (TemplateSharesTable.receiverId eq friendUserId) and
+                                    (TemplateSharesTable.templateId eq templateId)
+                        }
+                        .toList()
+                        .filter {
+                            val status = it[TemplateSharesTable.status]
+                            status == "pending" || status == "saved"
+                        }
+                        .firstOrNull()
+
+                    if (oldShare != null) {
+                        "templateexists"
+                    } else {
+                        TemplateSharesTable.insert {
+                            it[TemplateSharesTable.senderId] = session.userId
+                            it[TemplateSharesTable.receiverId] = friendUserId
+                            it[TemplateSharesTable.templateId] = templateId
+                            it[TemplateSharesTable.status] = "pending"
+                        }
+
+                        "sent"
+                    }
+                }
+            }
+        }
+
+        if (result == "sent") {
+            call.respondRedirect("/friends?msg=template_sent")
+        } else {
+            call.respondRedirect("/friends?error=$result")
+        }
+    }
+
+    post("/friends/templates/save/{shareId}") {
+        val session = call.sessions.get<UserSession>()
+
+        if (session == null) {
+            call.respondRedirect("/login")
+            return@post
+        }
+
+        val shareId = call.parameters["shareId"]?.toIntOrNull()
+
+        if (shareId == null) {
+            call.respondRedirect("/friends")
+            return@post
+        }
+
+        val result = transaction {
+            val share = TemplateSharesTable
+                .selectAll()
+                .where { TemplateSharesTable.id eq shareId }
+                .singleOrNull()
+
+            if (share == null ||
+                share[TemplateSharesTable.receiverId] != session.userId ||
+                share[TemplateSharesTable.status] != "pending"
+            ) {
+                "bad"
+            } else {
+                val originalTemplate = WorkoutTemplatesTable
+                    .selectAll()
+                    .where { WorkoutTemplatesTable.id eq share[TemplateSharesTable.templateId] }
+                    .singleOrNull()
+
+                if (originalTemplate == null) {
+                    "bad"
+                } else {
+                    val sender = UsersTable
+                        .selectAll()
+                        .where { UsersTable.id eq share[TemplateSharesTable.senderId] }
+                        .singleOrNull()
+
+                    var senderUsername = "friend"
+
+                    if (sender != null) {
+                        senderUsername = sender[UsersTable.username]
+                    }
+
+                    var copiedName = originalTemplate[WorkoutTemplatesTable.name] + " (from @$senderUsername)"
+
+                    if (copiedName.length > 100) {
+                        copiedName = copiedName.substring(0, 100)
+                    }
+
+                    val copiedTemplateId = WorkoutTemplatesTable.insert {
+                        it[WorkoutTemplatesTable.userId] = session.userId
+                        it[WorkoutTemplatesTable.name] = copiedName
+                        it[WorkoutTemplatesTable.description] = originalTemplate[WorkoutTemplatesTable.description]
+                    }[WorkoutTemplatesTable.id]
+
+                    val originalExercises = WorkoutTemplateExercisesTable
+                        .selectAll()
+                        .where { WorkoutTemplateExercisesTable.templateId eq originalTemplate[WorkoutTemplatesTable.id] }
+                        .toList()
+
+                    for (exercise in originalExercises) {
+                        WorkoutTemplateExercisesTable.insert {
+                            it[WorkoutTemplateExercisesTable.templateId] = copiedTemplateId
+                            it[WorkoutTemplateExercisesTable.exerciseId] = exercise[WorkoutTemplateExercisesTable.exerciseId]
+                        }
+                    }
+
+                    TemplateSharesTable.update({ TemplateSharesTable.id eq shareId }) {
+                        it[TemplateSharesTable.status] = "saved"
+                    }
+
+                    "saved"
+                }
+            }
+        }
+
+        if (result == "saved") {
+            call.respondRedirect("/friends?msg=template_saved")
+        } else {
+            call.respondRedirect("/friends")
+        }
+    }
+
+    post("/friends/templates/decline/{shareId}") {
+        val session = call.sessions.get<UserSession>()
+
+        if (session == null) {
+            call.respondRedirect("/login")
+            return@post
+        }
+
+        val shareId = call.parameters["shareId"]?.toIntOrNull()
+
+        if (shareId == null) {
+            call.respondRedirect("/friends")
+            return@post
+        }
+
+        transaction {
+            val share = TemplateSharesTable
+                .selectAll()
+                .where { TemplateSharesTable.id eq shareId }
+                .singleOrNull()
+
+            if (share != null &&
+                share[TemplateSharesTable.receiverId] == session.userId &&
+                share[TemplateSharesTable.status] == "pending"
+            ) {
+                TemplateSharesTable.update({ TemplateSharesTable.id eq shareId }) {
+                    it[TemplateSharesTable.status] = "declined"
+                }
+            }
+        }
+
+        call.respondRedirect("/friends?msg=template_declined")
+    }
+
+    post("/friends/templates/cancel/{shareId}") {
+        val session = call.sessions.get<UserSession>()
+
+        if (session == null) {
+            call.respondRedirect("/login")
+            return@post
+        }
+
+        val shareId = call.parameters["shareId"]?.toIntOrNull()
+
+        if (shareId == null) {
+            call.respondRedirect("/friends")
+            return@post
+        }
+
+        transaction {
+            val share = TemplateSharesTable
+                .selectAll()
+                .where { TemplateSharesTable.id eq shareId }
+                .singleOrNull()
+
+            if (share != null &&
+                share[TemplateSharesTable.senderId] == session.userId &&
+                share[TemplateSharesTable.status] == "pending"
+            ) {
+                TemplateSharesTable.deleteWhere {
+                    TemplateSharesTable.id eq shareId
+                }
+            }
+        }
+
+        call.respondRedirect("/friends?msg=template_cancelled")
+    }
 }
 
 data class FriendsPageData(
     val friends: List<FriendDisplay>,
     val incomingRequests: List<FriendRequestDisplay>,
-    val outgoingRequests: List<FriendRequestDisplay>
+    val outgoingRequests: List<FriendRequestDisplay>,
+    val myTemplates: List<FriendTemplateChoice>,
+    val receivedTemplates: List<ReceivedTemplateShareDisplay>,
+    val sentTemplates: List<SentTemplateShareDisplay>
 )
 
 fun loadFriendsPageData(userId: Int): FriendsPageData {
@@ -419,12 +664,146 @@ fun loadFriendsPageData(userId: Int): FriendsPageData {
             }
         }
 
+        val myTemplates = loadTemplateChoicesForFriendPage(userId)
+        val receivedTemplates = loadReceivedTemplateShares(userId)
+        val sentTemplates = loadSentTemplateShares(userId)
+
         FriendsPageData(
             friends = friends,
             incomingRequests = incomingRequests,
-            outgoingRequests = outgoingRequests
+            outgoingRequests = outgoingRequests,
+            myTemplates = myTemplates,
+            receivedTemplates = receivedTemplates,
+            sentTemplates = sentTemplates
         )
     }
+}
+
+fun loadTemplateChoicesForFriendPage(userId: Int): List<FriendTemplateChoice> {
+    val rows = WorkoutTemplatesTable
+        .selectAll()
+        .where { WorkoutTemplatesTable.userId eq userId }
+        .orderBy(WorkoutTemplatesTable.name, SortOrder.ASC)
+        .toList()
+
+    val list = mutableListOf<FriendTemplateChoice>()
+
+    for (row in rows) {
+        val count = WorkoutTemplateExercisesTable
+            .selectAll()
+            .where { WorkoutTemplateExercisesTable.templateId eq row[WorkoutTemplatesTable.id] }
+            .count()
+            .toInt()
+
+        list.add(
+            FriendTemplateChoice(
+                templateId = row[WorkoutTemplatesTable.id],
+                name = row[WorkoutTemplatesTable.name],
+                exerciseCount = count
+            )
+        )
+    }
+
+    return list
+}
+
+fun loadReceivedTemplateShares(userId: Int): List<ReceivedTemplateShareDisplay> {
+    val shares = TemplateSharesTable
+        .selectAll()
+        .where {
+            (TemplateSharesTable.receiverId eq userId) and
+                    (TemplateSharesTable.status eq "pending")
+        }
+        .orderBy(TemplateSharesTable.id, SortOrder.DESC)
+        .toList()
+
+    val list = mutableListOf<ReceivedTemplateShareDisplay>()
+
+    for (share in shares) {
+        val sender = UsersTable
+            .selectAll()
+            .where { UsersTable.id eq share[TemplateSharesTable.senderId] }
+            .singleOrNull()
+
+        val template = WorkoutTemplatesTable
+            .selectAll()
+            .where { WorkoutTemplatesTable.id eq share[TemplateSharesTable.templateId] }
+            .singleOrNull()
+
+        if (sender != null && template != null) {
+            val firstName = sender[UsersTable.name]
+            val surname = sender[UsersTable.surname] ?: ""
+            val senderName = "$firstName $surname".trim()
+
+            val count = WorkoutTemplateExercisesTable
+                .selectAll()
+                .where { WorkoutTemplateExercisesTable.templateId eq template[WorkoutTemplatesTable.id] }
+                .count()
+                .toInt()
+
+            list.add(
+                ReceivedTemplateShareDisplay(
+                    shareId = share[TemplateSharesTable.id],
+                    templateName = template[WorkoutTemplatesTable.name],
+                    senderName = senderName,
+                    senderUsername = sender[UsersTable.username],
+                    exerciseCount = count
+                )
+            )
+        }
+    }
+
+    return list
+}
+
+fun loadSentTemplateShares(userId: Int): List<SentTemplateShareDisplay> {
+    val shares = TemplateSharesTable
+        .selectAll()
+        .where { TemplateSharesTable.senderId eq userId }
+        .orderBy(TemplateSharesTable.id, SortOrder.DESC)
+        .toList()
+        .filter {
+            val status = it[TemplateSharesTable.status]
+            status == "pending" || status == "saved"
+        }
+
+    val list = mutableListOf<SentTemplateShareDisplay>()
+
+    for (share in shares) {
+        val receiver = UsersTable
+            .selectAll()
+            .where { UsersTable.id eq share[TemplateSharesTable.receiverId] }
+            .singleOrNull()
+
+        val template = WorkoutTemplatesTable
+            .selectAll()
+            .where { WorkoutTemplatesTable.id eq share[TemplateSharesTable.templateId] }
+            .singleOrNull()
+
+        if (receiver != null && template != null) {
+            val firstName = receiver[UsersTable.name]
+            val surname = receiver[UsersTable.surname] ?: ""
+            val receiverName = "$firstName $surname".trim()
+
+            var statusText = "Pending"
+
+            if (share[TemplateSharesTable.status] == "saved") {
+                statusText = "Saved"
+            }
+
+            list.add(
+                SentTemplateShareDisplay(
+                    shareId = share[TemplateSharesTable.id],
+                    templateName = template[WorkoutTemplatesTable.name],
+                    receiverName = receiverName,
+                    receiverUsername = receiver[UsersTable.username],
+                    status = statusText
+                )
+            )
+        }
+    }
+
+    return list
 }
 
 fun buildFriendProfileStats(userId: Int): FriendProfileStats {
@@ -456,7 +835,7 @@ fun buildFriendProfileStats(userId: Int): FriendProfileStats {
             val sets = ActivitySetsTable
                 .selectAll()
                 .where { ActivitySetsTable.activityId eq activity[ActivitiesTable.id] }
-                .orderBy(ActivitySetsTable.id, SortOrder.ASC)
+                .orderBy(ActivitySetsTable.setNumber, SortOrder.ASC)
                 .toList()
 
             totalSets += sets.size
