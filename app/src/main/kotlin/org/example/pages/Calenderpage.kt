@@ -12,7 +12,9 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
     val firstDay = java.util.Calendar.getInstance().apply {
         set(currentYear, currentMonth - 1, 1)
     }
+
     val daysInMonth = firstDay.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+
     // Convert Sunday=1..Saturday=7 to Mon=0..Sun=6
     var startDayOfWeek = firstDay.get(java.util.Calendar.DAY_OF_WEEK) - 2
     if (startDayOfWeek < 0) startDayOfWeek = 6
@@ -30,6 +32,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
 
     // Build event map: day -> list of events
     val eventsByDay = mutableMapOf<Int, MutableList<Map<String, String>>>()
+
     for (event in events) {
         val day = event["day"]?.toIntOrNull() ?: continue
         eventsByDay.getOrPut(day) { mutableListOf() }.add(event)
@@ -43,8 +46,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
 
     for (row in 0 until rows) {
         cells.append("<tr>")
+
         for (col in 0 until 7) {
             val cellIndex = row * 7 + col
+
             if (cellIndex < startDayOfWeek || dayCounter > daysInMonth) {
                 cells.append("<td class=\"cal-empty\"></td>")
             } else {
@@ -54,6 +59,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
 
                 // Determine day type badge
                 val dayType = dayEvents.firstOrNull()?.get("type") ?: ""
+
                 val badgeHtml = when (dayType) {
                     "gym" -> "<span class=\"day-badge badge-gym\">Gym</span>"
                     "rest" -> "<span class=\"day-badge badge-rest\">Rest</span>"
@@ -78,31 +84,36 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
                         "busy" -> "#e63946"
                         else -> "#aaa"
                     }
+
                     "<span class='dot' style='background:$color'></span>"
                 }}
                         </div>
                     </td>
                 """.trimIndent())
+
                 dayCounter++
             }
         }
+
         cells.append("</tr>")
     }
 
-    // Upcoming events list (next 5)
+    // Upcoming events list
     val upcomingHtml = if (events.isEmpty()) {
-        "<p class='no-events'>No upcoming events. Click any day to add one!</p>"
+        "<p class='no-events'>No upcoming events. Click any day to add one.</p>"
     } else {
         events.sortedBy { it["day"]?.toIntOrNull() ?: 0 }
             .take(5)
             .joinToString("") { e ->
                 val typeLabel = when (e["type"]) {
-                    "gym" -> "🏋️ Gym"
-                    "rest" -> "😴 Rest"
-                    "busy" -> "📅 Busy"
-                    else -> "📌 Event"
+                    "gym" -> "Gym"
+                    "rest" -> "Rest"
+                    "busy" -> "Busy"
+                    else -> "Event"
                 }
+
                 val typeClass = "event-type-${e["type"] ?: "other"}"
+
                 """
                 <div class="upcoming-item $typeClass">
                     <div class="upcoming-left">
@@ -122,6 +133,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Calendar - Gym Tracker</title>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -132,7 +144,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             min-height: 100vh;
         }
 
-        /* ── Top nav (matches your site) ── */
+        /* ── Top nav ── */
         .top-bar {
             background: white;
             border-bottom: 2px solid #e8f5e9;
@@ -141,17 +153,22 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             align-items: center;
             justify-content: space-between;
         }
+
         .top-bar .logo {
-            font-size: 1.5rem;
+            font-size: 1rem;
             color: #2d6a4f;
+            font-weight: 800;
         }
+
         .top-bar a {
             color: #2d6a4f;
             text-decoration: none;
             font-weight: 600;
             font-size: 0.95rem;
         }
+
         .top-bar a:hover { text-decoration: underline; }
+
         .logout-btn {
             background: transparent;
             border: 2px solid #2d6a4f;
@@ -162,6 +179,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             font-weight: 600;
             font-size: 0.9rem;
         }
+
         .logout-btn:hover { background: #2d6a4f; color: white; }
 
         /* ── Page wrapper ── */
@@ -177,10 +195,79 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             color: #1b4332;
             margin-bottom: 4px;
         }
+
         .page-subtitle {
             color: #52796f;
             font-size: 1rem;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
+        }
+
+        /* ── Tabs ── */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            background: white;
+            border: 1.5px solid #d8f3dc;
+            color: #2d6a4f;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .tab-btn.active {
+            background: #2d6a4f;
+            color: white;
+        }
+
+        .tab-view {
+            display: none;
+        }
+
+        .tab-view.active {
+            display: block;
+        }
+
+        /* ── Summary stats ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .stats-row { grid-template-columns: repeat(1, 1fr); }
+        }
+
+        .stat-box {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 14px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(45,106,79,0.08);
+            border: 1.5px solid #e8f5e9;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #2d6a4f;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
+            color: #52796f;
+            margin-top: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
         /* ── Two-column layout ── */
@@ -190,6 +277,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             gap: 24px;
             align-items: start;
         }
+
         @media (max-width: 800px) {
             .cal-layout { grid-template-columns: 1fr; }
         }
@@ -211,7 +299,12 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             align-items: center;
             justify-content: space-between;
         }
-        .cal-header h2 { font-size: 1.3rem; font-weight: 700; }
+
+        .cal-header h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
         .cal-nav-btn {
             background: rgba(255,255,255,0.2);
             border: none;
@@ -221,10 +314,13 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             border-radius: 50%;
             font-size: 1.2rem;
             cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-decoration: none;
             transition: background 0.2s;
         }
+
         .cal-nav-btn:hover { background: rgba(255,255,255,0.35); }
 
         /* Day headers */
@@ -232,6 +328,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             width: 100%;
             border-collapse: collapse;
         }
+
         .cal-table thead th {
             padding: 12px 0 8px;
             text-align: center;
@@ -254,11 +351,19 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             transition: background 0.15s;
             position: relative;
         }
+
         .cal-day {
             cursor: pointer;
         }
-        .cal-day:hover { background: #f0fff4 !important; }
-        .cal-empty { background: #fafafa; cursor: default; }
+
+        .cal-day:hover {
+            background: #f0fff4 !important;
+        }
+
+        .cal-empty {
+            background: #fafafa;
+            cursor: default;
+        }
 
         .day-number {
             font-size: 0.9rem;
@@ -266,6 +371,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             color: #2d6a4f;
             margin-bottom: 3px;
         }
+
         .today .day-number {
             background: #2d6a4f;
             color: white;
@@ -277,7 +383,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             justify-content: center;
             font-size: 0.82rem;
         }
-        .today { background: #f0fff4; }
+
+        .today {
+            background: #f0fff4;
+        }
 
         /* Day type badges */
         .day-badge {
@@ -290,16 +399,42 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
-        .badge-gym { background: #2d6a4f; color: white; }
-        .badge-rest { background: #d8f3dc; color: #2d6a4f; }
-        .badge-race { background: #f4a261; color: white; }
-        .badge-busy { background: #e63946; color: white; }
 
-        .event-dots { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
-        .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .badge-gym {
+            background: #2d6a4f;
+            color: white;
+        }
+
+        .badge-rest {
+            background: #d8f3dc;
+            color: #2d6a4f;
+        }
+
+        .badge-busy {
+            background: #e63946;
+            color: white;
+        }
+
+        .event-dots {
+            display: flex;
+            gap: 3px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
 
         /* ── Right sidebar ── */
-        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
 
         /* Quick add card */
         .side-card {
@@ -309,6 +444,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             box-shadow: 0 2px 12px rgba(45,106,79,0.10);
             border: 1.5px solid #e8f5e9;
         }
+
         .side-card h3 {
             font-size: 1rem;
             font-weight: 700;
@@ -319,7 +455,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             gap: 8px;
         }
 
-        .form-group { margin-bottom: 12px; }
+        .form-group {
+            margin-bottom: 12px;
+        }
+
         .form-group label {
             display: block;
             font-size: 0.8rem;
@@ -327,7 +466,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             color: #52796f;
             margin-bottom: 4px;
         }
-        .form-group input, .form-group select, .form-group textarea {
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             width: 100%;
             padding: 9px 12px;
             border: 1.5px solid #d8f3dc;
@@ -339,11 +481,18 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             transition: border 0.2s;
             font-family: inherit;
         }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             border-color: #2d6a4f;
             background: white;
         }
-        .form-group textarea { resize: vertical; min-height: 60px; }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
 
         .btn-green {
             width: 100%;
@@ -357,7 +506,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             cursor: pointer;
             transition: background 0.2s;
         }
-        .btn-green:hover { background: #1b4332; }
+
+        .btn-green:hover {
+            background: #1b4332;
+        }
 
         /* Upcoming events */
         .upcoming-item {
@@ -371,16 +523,48 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             background: #f0fff4;
             font-size: 0.85rem;
         }
-        .event-type-rest { border-left-color: #74c69d; background: #f0fff8; }
-        .event-type-race { border-left-color: #f4a261; background: #fff8f0; }
-        .event-type-busy { border-left-color: #e63946; background: #fff0f0; }
 
-        .upcoming-left { display: flex; flex-direction: column; gap: 2px; }
-        .upcoming-day { font-weight: 700; color: #1b4332; font-size: 0.82rem; }
-        .upcoming-label { font-size: 0.78rem; color: #52796f; }
-        .upcoming-note { font-size: 0.78rem; color: #888; max-width: 100px; text-align: right; }
+        .event-type-rest {
+            border-left-color: #74c69d;
+            background: #f0fff8;
+        }
 
-        .no-events { color: #888; font-size: 0.85rem; font-style: italic; text-align: center; padding: 16px 0; }
+        .event-type-busy {
+            border-left-color: #e63946;
+            background: #fff0f0;
+        }
+
+        .upcoming-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .upcoming-day {
+            font-weight: 700;
+            color: #1b4332;
+            font-size: 0.82rem;
+        }
+
+        .upcoming-label {
+            font-size: 0.78rem;
+            color: #52796f;
+        }
+
+        .upcoming-note {
+            font-size: 0.78rem;
+            color: #888;
+            max-width: 100px;
+            text-align: right;
+        }
+
+        .no-events {
+            color: #888;
+            font-size: 0.85rem;
+            font-style: italic;
+            text-align: center;
+            padding: 16px 0;
+        }
 
         /* Legend */
         .legend {
@@ -389,6 +573,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             gap: 8px;
             margin-bottom: 4px;
         }
+
         .legend-item {
             display: flex;
             align-items: center;
@@ -396,21 +581,28 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             font-size: 0.75rem;
             color: #52796f;
         }
+
         .legend-dot {
-            width: 10px; height: 10px;
+            width: 10px;
+            height: 10px;
             border-radius: 3px;
         }
 
         /* ── Modal ── */
         .modal-overlay {
             display: none;
-            position: fixed; inset: 0;
+            position: fixed;
+            inset: 0;
             background: rgba(0,0,0,0.45);
             z-index: 1000;
             align-items: center;
             justify-content: center;
         }
-        .modal-overlay.open { display: flex; }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
         .modal {
             background: white;
             border-radius: 18px;
@@ -420,19 +612,28 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             box-shadow: 0 8px 40px rgba(0,0,0,0.18);
             position: relative;
         }
+
         .modal h2 {
             font-size: 1.2rem;
             color: #1b4332;
             margin-bottom: 18px;
         }
+
         .modal-close {
             position: absolute;
-            top: 16px; right: 18px;
-            background: none; border: none;
-            font-size: 1.5rem; cursor: pointer;
-            color: #888; line-height: 1;
+            top: 16px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #888;
+            line-height: 1;
         }
-        .modal-close:hover { color: #e63946; }
+
+        .modal-close:hover {
+            color: #e63946;
+        }
 
         /* Day timetable section */
         .timetable-section {
@@ -440,6 +641,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             padding-top: 14px;
             border-top: 1px solid #e8f5e9;
         }
+
         .timetable-section h4 {
             font-size: 0.85rem;
             color: #52796f;
@@ -448,12 +650,19 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        .time-slots { display: flex; flex-direction: column; gap: 6px; }
+
+        .time-slots {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
         .time-slot {
             display: flex;
             gap: 10px;
             align-items: center;
         }
+
         .time-slot input[type="time"] {
             width: 110px;
             padding: 7px 10px;
@@ -463,6 +672,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             color: #1b4332;
             background: #f9fdf9;
         }
+
         .time-slot input[type="text"] {
             flex: 1;
             padding: 7px 10px;
@@ -472,6 +682,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             color: #1b4332;
             background: #f9fdf9;
         }
+
         .add-slot-btn {
             background: none;
             border: 1.5px dashed #74c69d;
@@ -483,13 +694,17 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             margin-top: 6px;
             font-weight: 600;
         }
-        .add-slot-btn:hover { background: #f0fff4; }
+
+        .add-slot-btn:hover {
+            background: #f0fff4;
+        }
 
         .modal-actions {
             display: flex;
             gap: 10px;
             margin-top: 20px;
         }
+
         .btn-save {
             flex: 1;
             padding: 11px;
@@ -501,7 +716,11 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             font-weight: 700;
             cursor: pointer;
         }
-        .btn-save:hover { background: #1b4332; }
+
+        .btn-save:hover {
+            background: #1b4332;
+        }
+
         .btn-cancel {
             padding: 11px 18px;
             background: #f0f4f0;
@@ -511,51 +730,15 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             font-size: 0.95rem;
             cursor: pointer;
         }
-        .btn-cancel:hover { background: #e8f5e9; }
-        .btn-delete {
-            padding: 11px 14px;
-            background: #fff0f0;
-            color: #e63946;
-            border: 1.5px solid #e63946;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .btn-delete:hover { background: #e63946; color: white; }
 
-        /* ── Summary stats ── */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 24px;
-        }
-        @media (max-width: 600px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
-        .stat-box {
-            background: white;
-            border-radius: 14px;
-            padding: 16px 14px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(45,106,79,0.08);
-            border: 1.5px solid #e8f5e9;
-        }
-        .stat-number {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #2d6a4f;
-            line-height: 1;
-        }
-        .stat-label {
-            font-size: 0.72rem;
-            color: #52796f;
-            margin-top: 4px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
+        .btn-cancel:hover {
+            background: #e8f5e9;
         }
 
-        .existing-events-list { margin-bottom: 10px; }
+        .existing-events-list {
+            margin-bottom: 10px;
+        }
+
         .existing-event-tag {
             display: inline-flex;
             align-items: center;
@@ -566,134 +749,175 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
             font-weight: 700;
             margin: 2px 3px;
         }
-        .tag-gym { background: #2d6a4f; color: white; }
-        .tag-rest { background: #d8f3dc; color: #1b4332; }
-        .tag-race { background: #f4a261; color: white; }
-        .tag-busy { background: #e63946; color: white; }
+
+        .tag-gym {
+            background: #2d6a4f;
+            color: white;
+        }
+
+        .tag-rest {
+            background: #d8f3dc;
+            color: #1b4332;
+        }
+
+        .tag-busy {
+            background: #e63946;
+            color: white;
+        }
     </style>
 </head>
+
 <body>
 
-<!-- Top bar matching your site -->
 <div class="top-bar">
-    <a href="/dashboard">&#8592; Back to Dashboard</a>
-    <span class="logo">&#x1F4AA;</span>
+    <a href="/dashboard">Back to Dashboard</a>
+
+    <span class="logo">Gym Tracker</span>
+
     <form action="/logout" method="post" style="display:inline">
         <button type="submit" class="logout-btn">Logout</button>
     </form>
 </div>
 
 <div class="page-wrap">
-    <div class="page-title">📅 My Calendar</div>
-    <p class="page-subtitle">Plan your gym sessions, rest days, races, and busy days, $username.</p>
+    <div class="page-title">My Calendar</div>
 
-    <!-- Stats row -->
-    <div class="stats-row">
-        <div class="stat-box">
-            <div class="stat-number" id="stat-gym">${events.count { it["type"] == "gym" }}</div>
-            <div class="stat-label">🏋️ Gym Days</div>
+    <p class="page-subtitle">Plan your gym sessions, rest days, and busy days, $username.</p>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('calendarView', this)">Calendar</button>
+        <button class="tab-btn" onclick="showTab('eventsView', this)">Events</button>
+    </div>
+
+    <div id="calendarView" class="tab-view active">
+
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-number" id="stat-gym">${events.count { it["type"] == "gym" }}</div>
+                <div class="stat-label">Gym Days</div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-number" id="stat-rest">${events.count { it["type"] == "rest" }}</div>
+                <div class="stat-label">Rest Days</div>
+            </div>
+
+            <div class="stat-box">
+                <div class="stat-number" id="stat-busy">${events.count { it["type"] == "busy" }}</div>
+                <div class="stat-label">Busy Days</div>
+            </div>
         </div>
-        <div class="stat-box">
-            <div class="stat-number" id="stat-rest">${events.count { it["type"] == "rest" }}</div>
-            <div class="stat-label">😴 Rest Days</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-number" id="stat-busy">${events.count { it["type"] == "busy" }}</div>
-            <div class="stat-label">📅 Busy Days</div>
+
+        <div class="cal-layout">
+
+            <div class="cal-card">
+                <div class="cal-header">
+                    <a class="cal-nav-btn" href="/calendar?month=$prevMonth&year=$prevYear">&#8249;</a>
+                    <h2>${monthNames[currentMonth - 1]} $currentYear</h2>
+                    <a class="cal-nav-btn" href="/calendar?month=$nextMonth&year=$nextYear">&#8250;</a>
+                </div>
+
+                <div style="padding:0 4px 12px">
+                    <table class="cal-table">
+                        <thead>
+                            <tr>
+                                ${dayNames.joinToString("") { "<th>$it</th>" }}
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            $cells
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="padding:0 16px 16px">
+                    <div class="legend">
+                        <div class="legend-item"><span class="legend-dot" style="background:#2d6a4f"></span>Gym</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#74c69d"></span>Rest</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#e63946"></span>Busy</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#2d6a4f;border-radius:50%"></span>Today</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="side-card">
+                    <h3>Quick Add Event</h3>
+
+                    <form action="/calendar/add" method="post">
+                        <input type="hidden" name="month" value="$currentMonth"/>
+                        <input type="hidden" name="year" value="$currentYear"/>
+
+                        <div class="form-group">
+                            <label>Day</label>
+                            <input type="number" name="day" min="1" max="$daysInMonth" placeholder="e.g. 15" required/>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select name="type" required>
+                                <option value="gym">Gym Session</option>
+                                <option value="rest">Rest Day</option>
+                                <option value="busy">Busy Day</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Note (optional)</label>
+                            <textarea name="note" placeholder="e.g. Leg day, work meeting..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-green">Add to Calendar</button>
+                    </form>
+                </div>
+
+                <div class="side-card">
+                    <h3>This Month</h3>
+
+                    <div class="existing-events-list">
+                        $upcomingHtml
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="cal-layout">
-        <!-- CALENDAR -->
-        <div class="cal-card">
-            <div class="cal-header">
-                <a class="cal-nav-btn" href="/calendar?month=$prevMonth&year=$prevYear">&#8249;</a>
-                <h2>${monthNames[currentMonth - 1]} $currentYear</h2>
-                <a class="cal-nav-btn" href="/calendar?month=$nextMonth&year=$nextYear">&#8250;</a>
-            </div>
-            <div style="padding:0 4px 12px">
-                <table class="cal-table">
-                    <thead>
-                        <tr>
-                            ${dayNames.joinToString("") { "<th>$it</th>" }}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        $cells
-                    </tbody>
-                </table>
-            </div>
-            <!-- Legend -->
-            <div style="padding:0 16px 16px">
-                <div class="legend">
-                    <div class="legend-item"><span class="legend-dot" style="background:#2d6a4f"></span>Gym</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#74c69d"></span>Rest</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#e63946"></span>Busy</div>
-                    <div class="legend-item"><span class="legend-dot" style="background:#2d6a4f;border-radius:50%"></span>Today</div>
-                </div>
-            </div>
-        </div>
+    <div id="eventsView" class="tab-view">
+        <div class="side-card">
+            <h3>Events</h3>
 
-        <!-- SIDEBAR -->
-        <div class="sidebar">
-            <!-- Quick Add -->
-            <div class="side-card">
-                <h3>➕ Quick Add Event</h3>
-                <form action="/calendar/add" method="post">
-                    <input type="hidden" name="month" value="$currentMonth"/>
-                    <input type="hidden" name="year" value="$currentYear"/>
-                    <div class="form-group">
-                        <label>Day</label>
-                        <input type="number" name="day" min="1" max="$daysInMonth" placeholder="e.g. 15" required/>
-                    </div>
-                    <div class="form-group">
-                        <label>Type</label>
-                        <select name="type" required>
-                            <option value="gym">🏋️ Gym Session</option>
-                            <option value="rest">😴 Rest Day</option>
-                            <option value="busy">📅 Busy Day</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Note (optional)</label>
-                        <textarea name="note" placeholder="e.g. Leg day, 10K race, work meeting..."></textarea>
-                    </div>
-                    <button type="submit" class="btn-green">Add to Calendar</button>
-                </form>
-            </div>
-
-            <!-- Upcoming Events -->
-            <div class="side-card">
-                <h3>📋 This Month</h3>
-                <div class="existing-events-list">
-                    $upcomingHtml
-                </div>
+            <div class="existing-events-list">
+                $upcomingHtml
             </div>
         </div>
     </div>
 </div>
 
-<!-- Day Modal -->
 <div class="modal-overlay" id="dayModal">
     <div class="modal">
         <button class="modal-close" onclick="closeModal()">&#215;</button>
+
         <h2 id="modal-title">Day Details</h2>
 
         <div id="modal-existing" class="existing-events-list"></div>
 
         <div class="timetable-section">
-            <h4>📆 Day Timetable</h4>
+            <h4>Day Timetable</h4>
+
             <div class="time-slots" id="timeSlots">
                 <div class="time-slot">
                     <input type="time" value="06:00" class="slot-time"/>
                     <input type="text" placeholder="e.g. Morning run" class="slot-task"/>
                 </div>
+
                 <div class="time-slot">
                     <input type="time" value="09:00" class="slot-time"/>
-                    <input type="text" placeholder="e.g. Gym - chest day" class="slot-task"/>
+                    <input type="text" placeholder="e.g. Gym session" class="slot-task"/>
                 </div>
             </div>
-            <button class="add-slot-btn" onclick="addTimeSlot()">+ Add time slot</button>
+
+            <button class="add-slot-btn" onclick="addTimeSlot()">Add time slot</button>
         </div>
 
         <div class="modal-actions">
@@ -704,32 +928,65 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
 </div>
 
 <script>
-    // Store events from server
     const serverEvents = ${buildEventJson(events)};
     const timetables = JSON.parse(localStorage.getItem('gymTimetables') || '{}');
 
+    function showTab(viewId, button) {
+        document.getElementById('calendarView').classList.remove('active');
+        document.getElementById('eventsView').classList.remove('active');
+
+        document.getElementById(viewId).classList.add('active');
+
+        const buttons = document.querySelectorAll('.tab-btn');
+
+        buttons.forEach(function(btn) {
+            btn.classList.remove('active');
+        });
+
+        button.classList.add('active');
+    }
+
     function openDayModal(day, month, year) {
         const key = year + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-        document.getElementById('modal-title').textContent = 
-            new Date(year, month-1, day).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-        // Show existing events for this day
+        document.getElementById('modal-title').textContent =
+            new Date(year, month - 1, day).toLocaleDateString(
+                'en-GB',
+                {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                }
+            );
+
         const dayEvents = serverEvents.filter(e => parseInt(e.day) === day);
         const existingDiv = document.getElementById('modal-existing');
+
         if (dayEvents.length > 0) {
             existingDiv.innerHTML = dayEvents.map(e => {
-                const typeMap = {gym:'tag-gym',rest:'tag-rest',busy:'tag-busy'};
-                const labelMap = {gym:'🏋️ Gym',rest:'😴 Rest',busy:'📅 Busy'};
-                return '<span class="existing-event-tag ' + (typeMap[e.type]||'') + '">' +
-                    (labelMap[e.type]||e.type) + (e.note ? ': ' + e.note : '') + '</span>';
+                const typeMap = {
+                    gym: 'tag-gym',
+                    rest: 'tag-rest',
+                    busy: 'tag-busy'
+                };
+
+                const labelMap = {
+                    gym: 'Gym',
+                    rest: 'Rest',
+                    busy: 'Busy'
+                };
+
+                return '<span class="existing-event-tag ' + (typeMap[e.type] || '') + '">' +
+                    (labelMap[e.type] || e.type) + (e.note ? ': ' + e.note : '') + '</span>';
             }).join('');
         } else {
-            existingDiv.innerHTML = '<p style="color:#888;font-size:0.82rem;margin-bottom:8px">No events yet — add one using the form ➡</p>';
+            existingDiv.innerHTML = '<p style="color:#888;font-size:0.82rem;margin-bottom:8px">No events yet. Add one using the form.</p>';
         }
 
-        // Load saved timetable
         const saved = timetables[key] || [];
         const slotsDiv = document.getElementById('timeSlots');
+
         if (saved.length > 0) {
             slotsDiv.innerHTML = saved.map(s =>
                 '<div class="time-slot">' +
@@ -738,7 +995,7 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
                 '</div>'
             ).join('');
         } else {
-            slotsDiv.innerHTML = 
+            slotsDiv.innerHTML =
                 '<div class="time-slot"><input type="time" value="06:00" class="slot-time"/><input type="text" placeholder="e.g. Morning run" class="slot-task"/></div>' +
                 '<div class="time-slot"><input type="time" value="09:00" class="slot-time"/><input type="text" placeholder="e.g. Gym session" class="slot-task"/></div>';
         }
@@ -754,8 +1011,10 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
     function addTimeSlot() {
         const slotsDiv = document.getElementById('timeSlots');
         const div = document.createElement('div');
+
         div.className = 'time-slot';
         div.innerHTML = '<input type="time" class="slot-time"/><input type="text" placeholder="Activity..." class="slot-task"/>';
+
         slotsDiv.appendChild(div);
     }
 
@@ -764,30 +1023,36 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
         const times = document.querySelectorAll('.slot-time');
         const tasks = document.querySelectorAll('.slot-task');
         const slots = [];
+
         times.forEach((t, i) => {
             if (t.value || tasks[i].value) {
                 slots.push({ time: t.value, task: tasks[i].value });
             }
         });
+
         timetables[key] = slots;
         localStorage.setItem('gymTimetables', JSON.stringify(timetables));
+
         closeModal();
-        showToast('Timetable saved! ✓');
+        showToast('Timetable saved');
     }
 
     function showToast(msg) {
         const t = document.createElement('div');
+
         t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#2d6a4f;color:white;padding:12px 24px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.2);';
+
         t.textContent = msg;
         document.body.appendChild(t);
+
         setTimeout(() => t.remove(), 2500);
     }
 
-    // Close modal on overlay click
     document.getElementById('dayModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
     });
 </script>
+
 </body>
 </html>
     """.trimIndent()
@@ -795,10 +1060,12 @@ fun calendarPage(username: String, currentMonth: Int, currentYear: Int, events: 
 
 private fun buildEventJson(events: List<Map<String, String>>): String {
     if (events.isEmpty()) return "[]"
+
     return "[" + events.joinToString(",") { e ->
         val day = e["day"] ?: ""
         val type = e["type"] ?: ""
         val note = (e["note"] ?: "").replace("\"", "\\\"")
+
         """{"day":"$day","type":"$type","note":"$note"}"""
     } + "]"
 }

@@ -9,6 +9,7 @@ import org.example.db.tables.TemplateSharesTable
 import org.example.db.tables.UsersTable
 import org.example.db.tables.WorkoutTemplateExercisesTable
 import org.example.db.tables.WorkoutTemplatesTable
+import org.example.db.tables.CalendarEventsTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -32,7 +33,8 @@ object DatabaseFactory {
                 WorkoutTemplatesTable,
                 WorkoutTemplateExercisesTable,
                 GoalsTable,
-                TemplateSharesTable
+                TemplateSharesTable,
+                CalendarEventsTable    
             )
         }
     }
