@@ -640,3 +640,5 @@ fun pageCss(): String {
         </style>
     """.trimIndent()
 }
+
+//alot of the front end utilised AI as we all lacked experienced with the language
