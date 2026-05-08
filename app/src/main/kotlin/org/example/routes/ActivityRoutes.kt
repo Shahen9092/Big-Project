@@ -26,6 +26,21 @@ import org.jetbrains.exposed.sql.update
 import java.time.LocalDate
 import java.time.YearMonth
 
+data class DeletedActivitySetBackup(
+    val setNumber: Int,
+    val amount: Double
+)
+
+data class DeletedActivityBackup(
+    val userId: Int,
+    val exerciseId: Int,
+    val date: String,
+    val notes: String?,
+    val sets: List<DeletedActivitySetBackup>
+)
+
+val deletedActivityBackups = mutableMapOf<Int, DeletedActivityBackup>()
+
 fun Route.activityRoutes() {
 
     get("/activities/new") {
@@ -36,24 +51,23 @@ fun Route.activityRoutes() {
             return@get
         }
 
-        val searchText = call.request.queryParameters["q"]?.trim().orEmpty()
+        val search = call.request.queryParameters["q"]?.trim().orEmpty()
         val selectedCategory = call.request.queryParameters["category"]?.trim().orEmpty()
 
-        val pageData = transaction {
-            val exercises = ExercisesTable
+        val data = transaction {
+            val allExercises = ExercisesTable
                 .selectAll()
                 .orderBy(ExercisesTable.name, SortOrder.ASC)
                 .toList()
 
-            val categories = exercises
+            val categories = allExercises
                 .map { it[ExercisesTable.category] }
                 .distinct()
                 .sorted()
 
-            val filteredExercises = mutableListOf<org.jetbrains.exposed.sql.ResultRow>()
-            val searchLower = searchText.lowercase()
+            val lowerSearch = search.lowercase()
 
-            for (exercise in exercises) {
+            val filteredExercises = allExercises.filter { exercise ->
                 val name = exercise[ExercisesTable.name].lowercase()
                 val category = exercise[ExercisesTable.category].lowercase()
 
@@ -63,19 +77,17 @@ fun Route.activityRoutes() {
                     ""
                 }
 
-                val searchMatches =
-                    searchLower == "" ||
-                            name.contains(searchLower) ||
-                            category.contains(searchLower) ||
-                            notes.contains(searchLower)
+                val matchesSearch =
+                    lowerSearch == "" ||
+                            name.contains(lowerSearch) ||
+                            category.contains(lowerSearch) ||
+                            notes.contains(lowerSearch)
 
-                val categoryMatches =
+                val matchesCategory =
                     selectedCategory == "" ||
                             exercise[ExercisesTable.category] == selectedCategory
 
-                if (searchMatches && categoryMatches) {
-                    filteredExercises.add(exercise)
-                }
+                matchesSearch && matchesCategory
             }
 
             Pair(filteredExercises, categories)
@@ -83,10 +95,10 @@ fun Route.activityRoutes() {
 
         call.respondText(
             renderExerciseSearchPage(
-                exercises = pageData.first,
-                categories = pageData.second,
+                exercises = data.first,
+                categories = data.second,
                 selectedCategory = selectedCategory,
-                search = searchText
+                search = search
             ),
             ContentType.Text.Html
         )
@@ -177,17 +189,17 @@ fun Route.activityRoutes() {
             return@post
         }
 
-        val validAmounts = mutableListOf<Double>()
+        val cleanedAmounts = mutableListOf<Double>()
 
-        for (amount in amounts) {
-            val amountValue = amount.toDoubleOrNull()
+        for (amountText in amounts) {
+            val value = amountText.toDoubleOrNull()
 
-            if (amountValue != null && amountValue > 0) {
-                validAmounts.add(amountValue)
+            if (value != null && value > 0) {
+                cleanedAmounts.add(value)
             }
         }
 
-        if (validAmounts.isEmpty()) {
+        if (cleanedAmounts.isEmpty()) {
             call.respondText(
                 renderLogExercisePage(
                     exercise = exercise,
@@ -201,7 +213,7 @@ fun Route.activityRoutes() {
         }
 
         transaction {
-            val newActivityId = ActivitiesTable.insert {
+            val activityId = ActivitiesTable.insert {
                 it[ActivitiesTable.userId] = session.userId
                 it[ActivitiesTable.exerciseId] = exerciseId
                 it[ActivitiesTable.date] = date
@@ -210,9 +222,9 @@ fun Route.activityRoutes() {
 
             var setNumber = 1
 
-            for (amount in validAmounts) {
+            for (amount in cleanedAmounts) {
                 ActivitySetsTable.insert {
-                    it[ActivitySetsTable.activityId] = newActivityId
+                    it[ActivitySetsTable.activityId] = activityId
                     it[ActivitySetsTable.setNumber] = setNumber
                     it[ActivitySetsTable.amount] = amount
                 }
@@ -233,30 +245,28 @@ fun Route.activityRoutes() {
         }
 
         val message = call.request.queryParameters["msg"]
-        val monthQuery = call.request.queryParameters["month"]?.trim().orEmpty()
+        val monthFromQuery = call.request.queryParameters["month"]?.trim().orEmpty()
 
         val allActivities = loadActivitiesForUser(session.userId)
 
-        var selectedMonth = monthQuery
+        var selectedMonth = monthFromQuery
 
         if (selectedMonth == "") {
-            selectedMonth = if (allActivities.isNotEmpty()) {
-                getMonthKey(allActivities[0].date)
+            if (allActivities.isNotEmpty()) {
+                selectedMonth = getMonthKey(allActivities[0].date)
             } else {
-                YearMonth.now().toString()
+                selectedMonth = YearMonth.now().toString()
             }
         }
 
-        val activitiesForMonth = mutableListOf<ActivityDisplay>()
-
-        for (activity in allActivities) {
-            if (getMonthKey(activity.date) == selectedMonth) {
-                activitiesForMonth.add(activity)
-            }
+        val activitiesForMonth = allActivities.filter {
+            getMonthKey(it.date) == selectedMonth
         }
 
         val previousMonth = shiftMonth(selectedMonth, -1)
         val nextMonth = shiftMonth(selectedMonth, 1)
+
+        val canUndoDelete = message == "deleted" && deletedActivityBackups.containsKey(session.userId)
 
         call.respondText(
             renderActivitiesPage(
@@ -264,10 +274,46 @@ fun Route.activityRoutes() {
                 selectedMonth = selectedMonth,
                 previousMonth = previousMonth,
                 nextMonth = nextMonth,
-                message = message
+                message = message,
+                canUndoDelete = canUndoDelete
             ),
             ContentType.Text.Html
         )
+    }
+
+    post("/activities/undo-delete") {
+        val session = call.sessions.get<UserSession>()
+
+        if (session == null) {
+            call.respondRedirect("/login")
+            return@post
+        }
+
+        val backup = deletedActivityBackups.remove(session.userId)
+
+        if (backup == null) {
+            call.respondRedirect("/activities")
+            return@post
+        }
+
+        transaction {
+            val activityId = ActivitiesTable.insert {
+                it[ActivitiesTable.userId] = backup.userId
+                it[ActivitiesTable.exerciseId] = backup.exerciseId
+                it[ActivitiesTable.date] = backup.date
+                it[ActivitiesTable.notes] = backup.notes
+            }[ActivitiesTable.id]
+
+            for (set in backup.sets) {
+                ActivitySetsTable.insert {
+                    it[ActivitySetsTable.activityId] = activityId
+                    it[ActivitySetsTable.setNumber] = set.setNumber
+                    it[ActivitySetsTable.amount] = set.amount
+                }
+            }
+        }
+
+        call.respondRedirect("/activities?month=${getMonthKey(backup.date)}&msg=restored")
     }
 
     get("/activities/edit/{activityId}") {
@@ -291,9 +337,7 @@ fun Route.activityRoutes() {
                 .where { ActivitiesTable.id eq activityId }
                 .singleOrNull()
 
-            if (activity == null) {
-                null
-            } else if (activity[ActivitiesTable.userId] != session.userId) {
+            if (activity == null || activity[ActivitiesTable.userId] != session.userId) {
                 null
             } else {
                 val exercise = ExercisesTable
@@ -304,17 +348,12 @@ fun Route.activityRoutes() {
                 if (exercise == null) {
                     null
                 } else {
-                    val setRows = ActivitySetsTable
+                    val sets = ActivitySetsTable
                         .selectAll()
                         .where { ActivitySetsTable.activityId eq activityId }
                         .orderBy(ActivitySetsTable.setNumber, SortOrder.ASC)
                         .toList()
-
-                    val sets = mutableListOf<Double>()
-
-                    for (setRow in setRows) {
-                        sets.add(setRow[ActivitySetsTable.amount])
-                    }
+                        .map { it[ActivitySetsTable.amount] }
 
                     EditPageData(
                         activityId = activityId,
@@ -364,7 +403,6 @@ fun Route.activityRoutes() {
         }
 
         val params = call.receiveParameters()
-
         val date = params["date"]?.trim().orEmpty()
         val notes = params["notes"]?.trim()
         val amounts = params.getAll("amount") ?: emptyList()
@@ -375,9 +413,7 @@ fun Route.activityRoutes() {
                 .where { ActivitiesTable.id eq activityId }
                 .singleOrNull()
 
-            if (activity == null) {
-                null
-            } else if (activity[ActivitiesTable.userId] != session.userId) {
+            if (activity == null || activity[ActivitiesTable.userId] != session.userId) {
                 null
             } else {
                 val exercise = ExercisesTable
@@ -388,16 +424,6 @@ fun Route.activityRoutes() {
                 if (exercise == null) {
                     null
                 } else {
-                    val postedSets = mutableListOf<Double>()
-
-                    for (amount in amounts) {
-                        val amountValue = amount.toDoubleOrNull()
-
-                        if (amountValue != null) {
-                            postedSets.add(amountValue)
-                        }
-                    }
-
                     EditPageData(
                         activityId = activityId,
                         exerciseName = exercise[ExercisesTable.name],
@@ -405,7 +431,7 @@ fun Route.activityRoutes() {
                         unit = exercise[ExercisesTable.defaultUnit],
                         date = activity[ActivitiesTable.date],
                         notes = activity[ActivitiesTable.notes],
-                        sets = postedSets
+                        sets = amounts.mapNotNull { it.toDoubleOrNull() }
                     )
                 }
             }
@@ -433,17 +459,17 @@ fun Route.activityRoutes() {
             return@post
         }
 
-        val validAmounts = mutableListOf<Double>()
+        val cleanedAmounts = mutableListOf<Double>()
 
-        for (amount in amounts) {
-            val amountValue = amount.toDoubleOrNull()
+        for (amountText in amounts) {
+            val value = amountText.toDoubleOrNull()
 
-            if (amountValue != null && amountValue > 0) {
-                validAmounts.add(amountValue)
+            if (value != null && value > 0) {
+                cleanedAmounts.add(value)
             }
         }
 
-        if (validAmounts.isEmpty()) {
+        if (cleanedAmounts.isEmpty()) {
             call.respondText(
                 renderEditActivityPage(
                     activityId = pageData.activityId,
@@ -472,7 +498,7 @@ fun Route.activityRoutes() {
 
             var setNumber = 1
 
-            for (amount in validAmounts) {
+            for (amount in cleanedAmounts) {
                 ActivitySetsTable.insert {
                     it[ActivitySetsTable.activityId] = activityId
                     it[ActivitySetsTable.setNumber] = setNumber
@@ -501,18 +527,39 @@ fun Route.activityRoutes() {
             return@post
         }
 
-        val monthToReturnTo = transaction {
+        val backup = transaction {
             val activity = ActivitiesTable
                 .selectAll()
                 .where { ActivitiesTable.id eq activityId }
                 .singleOrNull()
 
-            if (activity == null) {
-                null
-            } else if (activity[ActivitiesTable.userId] != session.userId) {
+            if (activity == null || activity[ActivitiesTable.userId] != session.userId) {
                 null
             } else {
-                val month = getMonthKey(activity[ActivitiesTable.date])
+                val setRows = ActivitySetsTable
+                    .selectAll()
+                    .where { ActivitySetsTable.activityId eq activityId }
+                    .orderBy(ActivitySetsTable.setNumber, SortOrder.ASC)
+                    .toList()
+
+                val setBackups = mutableListOf<DeletedActivitySetBackup>()
+
+                for (setRow in setRows) {
+                    setBackups.add(
+                        DeletedActivitySetBackup(
+                            setNumber = setRow[ActivitySetsTable.setNumber],
+                            amount = setRow[ActivitySetsTable.amount]
+                        )
+                    )
+                }
+
+                val backupData = DeletedActivityBackup(
+                    userId = activity[ActivitiesTable.userId],
+                    exerciseId = activity[ActivitiesTable.exerciseId],
+                    date = activity[ActivitiesTable.date],
+                    notes = activity[ActivitiesTable.notes],
+                    sets = setBackups
+                )
 
                 ActivitySetsTable.deleteWhere {
                     ActivitySetsTable.activityId eq activityId
@@ -522,16 +569,18 @@ fun Route.activityRoutes() {
                     ActivitiesTable.id eq activityId
                 }
 
-                month
+                backupData
             }
         }
 
-        if (monthToReturnTo == null) {
+        if (backup == null) {
             call.respondRedirect("/activities")
             return@post
         }
 
-        call.respondRedirect("/activities?month=$monthToReturnTo&msg=deleted")
+        deletedActivityBackups[session.userId] = backup
+
+        call.respondRedirect("/activities?month=${getMonthKey(backup.date)}&msg=deleted")
     }
 }
 
@@ -575,17 +624,17 @@ fun loadActivitiesForUser(userId: Int): List<ActivityDisplay> {
                     sets.add(setRow[ActivitySetsTable.amount])
                 }
 
-                val activityDisplay = ActivityDisplay(
-                    activityId = activity[ActivitiesTable.id],
-                    exerciseName = exercise[ExercisesTable.name],
-                    category = exercise[ExercisesTable.category],
-                    unit = exercise[ExercisesTable.defaultUnit],
-                    date = activity[ActivitiesTable.date],
-                    notes = activity[ActivitiesTable.notes],
-                    sets = sets
+                activities.add(
+                    ActivityDisplay(
+                        activityId = activity[ActivitiesTable.id],
+                        exerciseName = exercise[ExercisesTable.name],
+                        category = exercise[ExercisesTable.category],
+                        unit = exercise[ExercisesTable.defaultUnit],
+                        date = activity[ActivitiesTable.date],
+                        notes = activity[ActivitiesTable.notes],
+                        sets = sets
+                    )
                 )
-
-                activities.add(activityDisplay)
             }
         }
 
@@ -595,8 +644,7 @@ fun loadActivitiesForUser(userId: Int): List<ActivityDisplay> {
 
 fun shiftMonth(monthKey: String, offset: Long): String {
     return try {
-        val month = YearMonth.parse(monthKey)
-        month.plusMonths(offset).toString()
+        YearMonth.parse(monthKey).plusMonths(offset).toString()
     } catch (e: Exception) {
         YearMonth.now().plusMonths(offset).toString()
     }

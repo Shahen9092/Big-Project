@@ -442,7 +442,8 @@ fun renderActivitiesPage(
     selectedMonth: String,
     previousMonth: String,
     nextMonth: String,
-    message: String? = null
+    message: String? = null,
+    canUndoDelete: Boolean = false
 ): String {
 
     var messageText = ""
@@ -455,8 +456,24 @@ fun renderActivitiesPage(
         messageText = "<p class='success' role='status'>Activity updated successfully.</p>"
     }
 
+    if (message == "restored") {
+        messageText = "<p class='success' role='status'>Activity restored successfully.</p>"
+    }
+
     if (message == "deleted") {
-        messageText = "<p class='success' role='status'>Activity deleted successfully.</p>"
+        if (canUndoDelete) {
+            messageText = """
+                <div class="success" role="status">
+                    <p style="margin-bottom:10px;">Activity deleted successfully.</p>
+
+                    <form method="post" action="/activities/undo-delete" style="margin:0;">
+                        <button class="btn-light btn-small" type="submit">Undo Delete</button>
+                    </form>
+                </div>
+            """.trimIndent()
+        } else {
+            messageText = "<p class='success' role='status'>Activity deleted successfully.</p>"
+        }
     }
 
     var activitiesText = ""
