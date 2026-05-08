@@ -140,8 +140,18 @@ fun renderDashboardPage(fullName: String, stats: DashboardStats): String {
                             <a class="btn" href="/trainer">Open Trainer</a>
                         </div>
 
+<<<<<<< Updated upstream
                     </div>
 
+=======
+                        <div class="mini-card">
+                            <h3>Calendar</h3>
+                            <p>Plan gym days, rest days and races.</p>
+                            <a class="btn" href="/calendar">Open Calendar</a>
+                        </div>
+
+                    </div>
+>>>>>>> Stashed changes
                 </div>
             </main>
         </body>
