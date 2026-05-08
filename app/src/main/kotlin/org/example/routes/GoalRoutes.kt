@@ -12,6 +12,7 @@ import org.example.db.tables.ExercisesTable
 import org.example.db.tables.GoalsTable
 import org.example.models.UserSession
 import org.example.pages.GoalDisplay
+import org.example.pages.TemplateExerciseItem
 import org.example.pages.renderGoalsPage
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -20,6 +21,11 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.math.roundToInt
+
+data class GoalsPageData(
+    val goals: List<GoalDisplay>,
+    val exercises: List<TemplateExerciseItem>
+)
 
 fun Route.goalRoutes() {
 
@@ -31,20 +37,15 @@ fun Route.goalRoutes() {
             return@get
         }
 
-        val message = call.request.queryParameters["msg"]
-        val error = call.request.queryParameters["error"]
+        val message = getGoalQueryText(call, "msg")
+        val error = getGoalQueryText(call, "error")
 
-        val pageData = transaction {
-            val goals = loadGoalsForUser(session.userId)
-            val exercises = loadAllExercisesForTemplates()
-
-            Pair(goals, exercises)
-        }
+        val pageData = loadGoalsPageData(session.userId)
 
         call.respondText(
             renderGoalsPage(
-                goals = pageData.first,
-                exercises = pageData.second,
+                goals = pageData.goals,
+                exercises = pageData.exercises,
                 message = message,
                 error = error
             ),
@@ -62,58 +63,47 @@ fun Route.goalRoutes() {
 
         val params = call.receiveParameters()
 
-        val title = params["title"]?.trim().orEmpty()
-        val goalType = params["goalType"]?.trim().orEmpty()
-        val exerciseChoice = params["exerciseChoice"]?.trim().orEmpty()
-        val exerciseId = exerciseChoice.substringBefore(" - ").toIntOrNull()
-        val targetAmount = params["targetAmount"]?.toDoubleOrNull()
+        val title = getGoalFormText(params, "title")
+        val goalType = getGoalFormText(params, "goalType")
+        val exerciseChoice = getGoalFormText(params, "exerciseChoice")
+        val exerciseId = getExerciseIdFromChoice(exerciseChoice)
+        val targetAmount = getGoalFormDouble(params, "targetAmount")
 
         if (title == "") {
             call.respondRedirect("/goals?error=title")
             return@post
         }
 
-        if (targetAmount == null || targetAmount <= 0) {
+        if (targetAmount == null) {
             call.respondRedirect("/goals?error=target")
             return@post
         }
 
-        if (goalType == "exercise_best" && exerciseId == null) {
-            call.respondRedirect("/goals?error=exercise")
+        if (targetAmount <= 0) {
+            call.respondRedirect("/goals?error=target")
             return@post
         }
 
-        val unit = transaction {
-            if (goalType == "activities") {
-                "activities"
-            } else if (goalType == "sets") {
-                "sets"
-            } else {
-                val exercise = ExercisesTable
-                    .selectAll()
-                    .where { ExercisesTable.id eq exerciseId!! }
-                    .singleOrNull()
-
-                exercise?.get(ExercisesTable.defaultUnit) ?: "units"
+        if (goalType == "exercise_best") {
+            if (exerciseId == null) {
+                call.respondRedirect("/goals?error=exercise")
+                return@post
             }
         }
 
-        transaction {
-            GoalsTable.insert {
-                it[GoalsTable.userId] = session.userId
-                it[GoalsTable.title] = title
-                it[GoalsTable.goalType] = goalType
-                it[GoalsTable.targetAmount] = targetAmount
-                it[GoalsTable.unit] = unit
+        val unit = loadGoalUnit(
+            goalType = goalType,
+            exerciseId = exerciseId
+        )
 
-                // Dates are kept in the database because the table already has them,
-                // but the goal page now treats goals as all-time.
-                it[GoalsTable.startDate] = "0000-01-01"
-                it[GoalsTable.endDate] = "9999-12-31"
-
-                it[GoalsTable.exerciseId] = exerciseId
-            }
-        }
+        createGoal(
+            userId = session.userId,
+            title = title,
+            goalType = goalType,
+            targetAmount = targetAmount,
+            unit = unit,
+            exerciseId = exerciseId
+        )
 
         call.respondRedirect("/goals?msg=created")
     }
@@ -126,31 +116,187 @@ fun Route.goalRoutes() {
             return@post
         }
 
-        val goalId = call.parameters["goalId"]?.toIntOrNull()
+        val goalId = getGoalRouteInt(call, "goalId")
 
         if (goalId == null) {
             call.respondRedirect("/goals")
             return@post
         }
 
-        transaction {
-            val goal = GoalsTable
-                .selectAll()
-                .where { GoalsTable.id eq goalId }
-                .singleOrNull()
-
-            if (goal != null && goal[GoalsTable.userId] == session.userId) {
-                GoalsTable.deleteWhere {
-                    GoalsTable.id eq goalId
-                }
-            }
-        }
+        deleteGoalIfOwned(
+            goalId = goalId,
+            userId = session.userId
+        )
 
         call.respondRedirect("/goals?msg=deleted")
     }
 }
 
+fun getGoalQueryText(call: ApplicationCall, name: String): String? {
+
+    val text = call.request.queryParameters[name]
+
+    if (text == null) {
+        return null
+    }
+
+    return text.trim()
+}
+
+fun getGoalRouteInt(call: ApplicationCall, name: String): Int? {
+
+    val text = call.parameters[name]
+
+    if (text == null) {
+        return null
+    }
+
+    return text.toIntOrNull()
+}
+
+fun getGoalFormText(params: Parameters, name: String): String {
+
+    var result = ""
+
+    val text = params[name]
+
+    if (text != null) {
+        result = text.trim()
+    }
+
+    return result
+}
+
+fun getGoalFormDouble(params: Parameters, name: String): Double? {
+
+    val text = params[name]
+
+    if (text == null) {
+        return null
+    }
+
+    return text.toDoubleOrNull()
+}
+
+fun getExerciseIdFromChoice(exerciseChoice: String): Int? {
+
+    if (exerciseChoice == "") {
+        return null
+    }
+
+    var idText = ""
+
+    for (letter in exerciseChoice) {
+        if (letter == ' ') {
+            break
+        }
+
+        if (letter == '-') {
+            break
+        }
+
+        idText = idText + letter
+    }
+
+    if (idText == "") {
+        return null
+    }
+
+    return idText.toIntOrNull()
+}
+
+fun loadGoalsPageData(userId: Int): GoalsPageData {
+
+    return transaction {
+        val goals = loadGoalsForUser(userId)
+        val exercises = loadAllExercisesForTemplates()
+
+        GoalsPageData(
+            goals = goals,
+            exercises = exercises
+        )
+    }
+}
+
+fun loadGoalUnit(
+    goalType: String,
+    exerciseId: Int?
+): String {
+
+    return transaction {
+        var unit = "units"
+
+        if (goalType == "activities") {
+            unit = "activities"
+        } else if (goalType == "sets") {
+            unit = "sets"
+        } else {
+            if (exerciseId != null) {
+                val exercise = ExercisesTable
+                    .selectAll()
+                    .where { ExercisesTable.id eq exerciseId }
+                    .singleOrNull()
+
+                if (exercise != null) {
+                    unit = exercise[ExercisesTable.defaultUnit]
+                }
+            }
+        }
+
+        unit
+    }
+}
+
+fun createGoal(
+    userId: Int,
+    title: String,
+    goalType: String,
+    targetAmount: Double,
+    unit: String,
+    exerciseId: Int?
+) {
+
+    transaction {
+        GoalsTable.insert {
+            it[GoalsTable.userId] = userId
+            it[GoalsTable.title] = title
+            it[GoalsTable.goalType] = goalType
+            it[GoalsTable.targetAmount] = targetAmount
+            it[GoalsTable.unit] = unit
+
+            // Dates are kept in the database because the table already has them,
+            // but the goal page now treats goals as all-time.
+            it[GoalsTable.startDate] = "0000-01-01"
+            it[GoalsTable.endDate] = "9999-12-31"
+
+            it[GoalsTable.exerciseId] = exerciseId
+        }
+    }
+}
+
+fun deleteGoalIfOwned(
+    goalId: Int,
+    userId: Int
+) {
+
+    transaction {
+        val goal = GoalsTable
+            .selectAll()
+            .where { GoalsTable.id eq goalId }
+            .singleOrNull()
+
+        if (goal != null) {
+            if (goal[GoalsTable.userId] == userId) {
+                GoalsTable.deleteWhere {
+                    GoalsTable.id eq goalId
+                }
+            }
+        }
+    }
+}
+
 fun loadGoalsForUser(userId: Int): List<GoalDisplay> {
+
     val goalRows = GoalsTable
         .selectAll()
         .where { GoalsTable.userId eq userId }
@@ -160,26 +306,18 @@ fun loadGoalsForUser(userId: Int): List<GoalDisplay> {
     val displays = mutableListOf<GoalDisplay>()
 
     for (goal in goalRows) {
+        val goalType = goal[GoalsTable.goalType]
+        val exerciseId = goal[GoalsTable.exerciseId]
+
         val current = calculateGoalProgress(
             userId = userId,
-            goalType = goal[GoalsTable.goalType],
-            exerciseId = goal[GoalsTable.exerciseId]
+            goalType = goalType,
+            exerciseId = exerciseId
         )
 
         val target = goal[GoalsTable.targetAmount]
-
-        var percent = ((current / target) * 100).roundToInt()
-
-        if (percent > 100) {
-            percent = 100
-        }
-
-        val typeLabel = when (goal[GoalsTable.goalType]) {
-            "activities" -> "Number of activities"
-            "sets" -> "Number of sets"
-            "exercise_best" -> "Best amount for an exercise"
-            else -> goal[GoalsTable.goalType]
-        }
+        val percent = calculateGoalPercentage(current, target)
+        val typeLabel = getGoalTypeLabel(goalType)
 
         displays.add(
             GoalDisplay(
@@ -195,6 +333,35 @@ fun loadGoalsForUser(userId: Int): List<GoalDisplay> {
     }
 
     return displays
+}
+
+fun calculateGoalPercentage(
+    current: Double,
+    target: Double
+): Int {
+
+    var percent = ((current / target) * 100).roundToInt()
+
+    if (percent > 100) {
+        percent = 100
+    }
+
+    return percent
+}
+
+fun getGoalTypeLabel(goalType: String): String {
+
+    var typeLabel = goalType
+
+    if (goalType == "activities") {
+        typeLabel = "Number of activities"
+    } else if (goalType == "sets") {
+        typeLabel = "Number of sets"
+    } else if (goalType == "exercise_best") {
+        typeLabel = "Best amount for an exercise"
+    }
+
+    return typeLabel
 }
 
 fun calculateGoalProgress(
@@ -213,19 +380,8 @@ fun calculateGoalProgress(
     }
 
     if (goalType == "sets") {
-        var setCount = 0
-
-        for (activity in activityRows) {
-            val sets = ActivitySetsTable
-                .selectAll()
-                .where { ActivitySetsTable.activityId eq activity[ActivitiesTable.id] }
-                .count()
-                .toInt()
-
-            setCount += sets
-        }
-
-        return setCount.toDouble()
+        val totalSets = countTotalSets(activityRows)
+        return totalSets.toDouble()
     }
 
     if (goalType == "exercise_best") {
@@ -233,27 +389,61 @@ fun calculateGoalProgress(
             return 0.0
         }
 
-        var best = 0.0
+        val bestAmount = findBestAmountForExercise(
+            activityRows = activityRows,
+            exerciseId = exerciseId
+        )
 
-        for (activity in activityRows) {
-            if (activity[ActivitiesTable.exerciseId] == exerciseId) {
-                val sets = ActivitySetsTable
-                    .selectAll()
-                    .where { ActivitySetsTable.activityId eq activity[ActivitiesTable.id] }
-                    .toList()
-
-                for (set in sets) {
-                    val amount = set[ActivitySetsTable.amount]
-
-                    if (amount > best) {
-                        best = amount
-                    }
-                }
-            }
-        }
-
-        return best
+        return bestAmount
     }
 
     return 0.0
+}
+
+fun countTotalSets(activityRows: List<org.jetbrains.exposed.sql.ResultRow>): Int {
+
+    var setCount = 0
+
+    for (activity in activityRows) {
+        val activityId = activity[ActivitiesTable.id]
+
+        val setsForActivity = ActivitySetsTable
+            .selectAll()
+            .where { ActivitySetsTable.activityId eq activityId }
+            .count()
+            .toInt()
+
+        setCount = setCount + setsForActivity
+    }
+
+    return setCount
+}
+
+fun findBestAmountForExercise(
+    activityRows: List<org.jetbrains.exposed.sql.ResultRow>,
+    exerciseId: Int
+): Double {
+
+    var best = 0.0
+
+    for (activity in activityRows) {
+        if (activity[ActivitiesTable.exerciseId] == exerciseId) {
+            val activityId = activity[ActivitiesTable.id]
+
+            val sets = ActivitySetsTable
+                .selectAll()
+                .where { ActivitySetsTable.activityId eq activityId }
+                .toList()
+
+            for (set in sets) {
+                val amount = set[ActivitySetsTable.amount]
+
+                if (amount > best) {
+                    best = amount
+                }
+            }
+        }
+    }
+
+    return best
 }
